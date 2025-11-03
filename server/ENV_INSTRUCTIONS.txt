@@ -1,0 +1,44 @@
+===============================================
+INSTRUÇÕES: Configurar Service Role Key
+===============================================
+
+O arquivo server/.env precisa da SERVICE_ROLE_KEY do Supabase.
+
+PASSO A PASSO:
+--------------
+
+1. Acesse: https://supabase.com/dashboard/project/imxvcgixvlxrllkvngsa/settings/api
+
+2. Na seção "Project API keys", copie a chave "service_role"
+   (É a chave marcada como "secret" com ícone de aviso ⚠️)
+
+3. Abra o arquivo: server/.env
+
+4. Substitua "COLE_AQUI_SUA_SERVICE_ROLE_KEY" pela chave copiada
+
+5. O arquivo deve ficar assim:
+
+   PORT=4000
+   SUPABASE_URL=https://imxvcgixvlxrllkvngsa.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3M...
+
+6. Salve o arquivo
+
+7. Execute o servidor: npm run dev
+
+
+ARQUIVOS .ENV CONFIGURADOS:
+----------------------------
+
+✅ Frontend (.env na raiz):
+   VITE_SUPABASE_URL=https://imxvcgixvlxrllkvngsa.supabase.co
+   VITE_SUPABASE_ANON_KEY=eyJhbGci...zcB7bbd7B3DIQZIK2MGjClcJIvvOk8TaIls7Uv4GrQk
+
+⚠️ Backend (server/.env):
+   PORT=4000
+   SUPABASE_URL=https://imxvcgixvlxrllkvngsa.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=COLE_AQUI_SUA_SERVICE_ROLE_KEY  <-- PRECISA ATUALIZAR
+
+===============================================
+
+
