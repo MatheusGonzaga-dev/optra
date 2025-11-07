@@ -948,7 +948,10 @@ export default function PatientList() {
                             <Button
                                   variant="ghost"
                               size="sm"
-                              onClick={() => navigate(`/secretary/patient/${patient.id}`)}
+                              onClick={() => {
+                                const basePath = usuario?.perfil === 'ADMINISTRADOR' ? '/admin/patient' : '/secretary/patient';
+                                navigate(`${basePath}/${patient.id}`);
+                              }}
                                   className="text-xs"
                             >
                                   Ver

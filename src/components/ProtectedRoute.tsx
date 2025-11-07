@@ -1,42 +1,56 @@
-import { ReactNode, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { ReactNode } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
-import { PerfilUsuario } from '@/lib/supabase';
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  allowedProfiles?: PerfilUsuario[];
+  // Para compatibilidade com código existente
+  allowedProfiles?: string[];
+  // Para novo sistema de permissões
+  permission?: string;
+  anyPermissions?: string[];
+  allPermissions?: string[];
+  fallback?: ReactNode;
 }
 
-export function ProtectedRoute({ children, allowedProfiles }: ProtectedRouteProps) {
+export function ProtectedRoute({
+  children,
+  allowedProfiles,
+  permission,
+  anyPermissions,
+  allPermissions,
+  fallback = <Navigate to="/unauthorized" replace />,
+}: ProtectedRouteProps) {
   const { usuario, loading } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && !usuario) {
-      navigate('/login');
-    } else if (!loading && usuario && allowedProfiles && !allowedProfiles.includes(usuario.perfil)) {
-      navigate('/unauthorized');
-    }
-  }, [usuario, loading, navigate, allowedProfiles]);
+  const { hasPermission, hasAnyPermission, hasAllPermissions } = usePermissions();
 
   if (loading) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <div>Carregando...</div>;
   }
 
   if (!usuario) {
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
-  if (allowedProfiles && !allowedProfiles.includes(usuario.perfil)) {
-    return null;
+  let hasAccess = true;
+
+  // Verificar por perfil (modo legado/compatibilidade)
+  if (allowedProfiles && allowedProfiles.length > 0) {
+    hasAccess = allowedProfiles.includes(usuario.perfil);
+  }
+  // Verificar por permissão (novo sistema)
+  else if (permission) {
+    hasAccess = hasPermission(permission);
+  } else if (anyPermissions && anyPermissions.length > 0) {
+    hasAccess = hasAnyPermission(anyPermissions);
+  } else if (allPermissions && allPermissions.length > 0) {
+    hasAccess = hasAllPermissions(allPermissions);
+  }
+
+  if (!hasAccess) {
+    return <>{fallback}</>;
   }
 
   return <>{children}</>;
 }
-

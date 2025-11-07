@@ -61,8 +61,8 @@ router.get('/', async (req, res) => {
     if (status && typeof status === 'string') {
       query = query.eq('status', status.toUpperCase());
     } else {
-      // Por padrão, mostrar apenas quem está aguardando ou em atendimento
-      query = query.in('status', ['AGUARDANDO', 'EM_ATENDIMENTO']);
+      // Por padrão, mostrar apenas quem está aguardando na fila
+      query = query.eq('status', 'AGUARDANDO');
     }
 
     const { data: filaData, error: filaError } = await query;
@@ -147,18 +147,42 @@ router.post('/', async (req, res) => {
     }
 
     // Verificar se o paciente já está na fila ativa
-    const { data: existente } = await supabase
+    const { data: existente, error: checkError } = await supabase
       .from('fila_atendimento')
-      .select('id')
+      .select('id, status')
       .eq('paciente_id', parse.data.paciente_id)
       .eq('ativo', true)
       .in('status', ['AGUARDANDO', 'EM_ATENDIMENTO'])
-      .single();
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('Erro ao verificar paciente na fila:', checkError);
+      // Continua mesmo com erro na verificação
+    }
 
     if (existente) {
-      return res.status(400).json({ 
-        error: 'Paciente já está na fila de atendimento' 
-      });
+      console.log(`Paciente ${parse.data.paciente_id} já está na fila com status ${existente.status} (ID: ${existente.id})`);
+      
+      // Verificar se o paciente ainda existe
+      const { data: pacienteExists } = await supabase
+        .from('pacientes')
+        .select('id')
+        .eq('id', parse.data.paciente_id)
+        .maybeSingle();
+      
+      if (!pacienteExists) {
+        // Paciente não existe mais, limpar entrada da fila
+        await supabase
+          .from('fila_atendimento')
+          .update({ ativo: false })
+          .eq('id', existente.id);
+        console.log(`Entrada da fila ${existente.id} foi desativada porque o paciente não existe mais`);
+      } else {
+        return res.status(400).json({ 
+          error: 'Paciente já está na fila de atendimento',
+          existingEntryId: existente.id
+        });
+      }
     }
 
     // Obter a próxima posição na fila
@@ -166,6 +190,7 @@ router.post('/', async (req, res) => {
       .from('fila_atendimento')
       .select('posicao')
       .eq('ativo', true)
+      .eq('status', 'AGUARDANDO')
       .order('posicao', { ascending: false })
       .limit(1)
       .single();
@@ -265,21 +290,43 @@ router.put('/:id/posicao', async (req, res) => {
 
     // Se mover para cima (diminuir posição)
     if (nova_posicao < posicaoAtual) {
-      // Incrementar posição de todos entre nova_posicao e posicaoAtual-1
-      await supabase
+      const { data: afetados } = await supabase
         .from('fila_atendimento')
-        .update({ posicao: supabase.sql`posicao + 1` })
+        .select('id, posicao')
         .gte('posicao', nova_posicao)
-        .lt('posicao', posicaoAtual);
+        .lt('posicao', posicaoAtual)
+        .eq('ativo', true)
+        .eq('status', 'AGUARDANDO')
+        .order('posicao');
+
+      if (afetados) {
+        for (const item of afetados) {
+          await supabase
+            .from('fila_atendimento')
+            .update({ posicao: (item.posicao as number) + 1 })
+            .eq('id', item.id as string);
+        }
+      }
     }
     // Se mover para baixo (aumentar posição)
     else if (nova_posicao > posicaoAtual) {
-      // Decrementar posição de todos entre posicaoAtual+1 e nova_posicao
-      await supabase
+      const { data: afetados } = await supabase
         .from('fila_atendimento')
-        .update({ posicao: supabase.sql`posicao - 1` })
+        .select('id, posicao')
         .gt('posicao', posicaoAtual)
-        .lte('posicao', nova_posicao);
+        .lte('posicao', nova_posicao)
+        .eq('ativo', true)
+        .eq('status', 'AGUARDANDO')
+        .order('posicao');
+
+      if (afetados) {
+        for (const item of afetados) {
+          await supabase
+            .from('fila_atendimento')
+            .update({ posicao: (item.posicao as number) - 1 })
+            .eq('id', item.id as string);
+        }
+      }
     }
 
     // Atualizar posição do registro específico
@@ -307,6 +354,33 @@ router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Buscar posicao do removido
+    const { data: atual } = await supabase
+      .from('fila_atendimento')
+      .select('posicao')
+      .eq('id', id)
+      .single();
+
+    if (atual) {
+      // Decrementar posicao de quem estava atrás
+      const { data: posteriores } = await supabase
+        .from('fila_atendimento')
+        .select('id, posicao')
+        .gt('posicao', atual.posicao)
+        .eq('ativo', true)
+        .eq('status', 'AGUARDANDO')
+        .order('posicao');
+
+      if (posteriores) {
+        for (const item of posteriores) {
+          await supabase
+            .from('fila_atendimento')
+            .update({ posicao: (item.posicao as number) - 1 })
+            .eq('id', item.id as string);
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('fila_atendimento')
       .update({ ativo: false, status: 'CANCELADO' })
@@ -332,6 +406,36 @@ router.post('/:id/chamar', async (req, res) => {
     const { id } = req.params;
     const { optometrista_id } = req.body;
 
+    // Obter posição atual do paciente chamado
+    const { data: atual, error: erroBuscar } = await supabase
+      .from('fila_atendimento')
+      .select('id, posicao')
+      .eq('id', id)
+      .single();
+
+    if (erroBuscar || !atual) {
+      return res.status(404).json({ error: 'Entrada da fila não encontrada' });
+    }
+
+    // Reordenar: pacientes atrás avançam uma posição (decrementa 1)
+    const { data: posteriores } = await supabase
+      .from('fila_atendimento')
+      .select('id, posicao')
+      .eq('ativo', true)
+      .eq('status', 'AGUARDANDO')
+      .gt('posicao', atual.posicao)
+      .order('posicao', { ascending: true });
+
+    if (posteriores && posteriores.length > 0) {
+      for (const item of posteriores) {
+        await supabase
+          .from('fila_atendimento')
+          .update({ posicao: (item.posicao as number) - 1 })
+          .eq('id', item.id as string);
+      }
+    }
+
+    // Atualizar paciente chamado para EM_ATENDIMENTO
     const { data, error } = await supabase
       .from('fila_atendimento')
       .update({
@@ -339,6 +443,7 @@ router.post('/:id/chamar', async (req, res) => {
         hora_chamada: new Date().toISOString(),
         hora_inicio_atendimento: new Date().toISOString(),
         optometrista_id,
+        // Mantemos posicao como estava apenas para histórico; ele não aparecerá no GET padrão
       })
       .eq('id', id)
       .select('*')
@@ -361,6 +466,32 @@ router.post('/:id/finalizar', async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Reordenar fila, decrementando quem está atrás do finalizado
+    const { data: atual } = await supabase
+      .from('fila_atendimento')
+      .select('posicao')
+      .eq('id', id)
+      .single();
+
+    if (atual) {
+      const { data: posteriores } = await supabase
+        .from('fila_atendimento')
+        .select('id, posicao')
+        .gt('posicao', atual.posicao)
+        .eq('ativo', true)
+        .eq('status', 'AGUARDANDO')
+        .order('posicao');
+
+      if (posteriores) {
+        for (const item of posteriores) {
+          await supabase
+            .from('fila_atendimento')
+            .update({ posicao: (item.posicao as number) - 1 })
+            .eq('id', item.id as string);
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('fila_atendimento')
       .update({
@@ -379,6 +510,114 @@ router.post('/:id/finalizar', async (req, res) => {
     res.json(data);
   } catch (error: any) {
     console.error('Erro no endpoint POST /fila/:id/finalizar:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// POST /fila/normalize - Normaliza posicoes dos AGUARDANDO para iniciar em 1 (sequencial)
+router.post('/normalize', async (_req, res) => {
+  try {
+    const { data: aguardando, error: erroLista } = await supabase
+      .from('fila_atendimento')
+      .select('id, posicao')
+      .eq('ativo', true)
+      .eq('status', 'AGUARDANDO')
+      .order('posicao', { ascending: true });
+
+    if (erroLista) {
+      console.error('Erro ao buscar fila para normalizar:', erroLista);
+      return res.status(500).json({ error: erroLista.message });
+    }
+
+    if (!aguardando || aguardando.length === 0) {
+      return res.json({ message: 'Nada a normalizar' });
+    }
+
+    let novaPosicao = 1;
+    for (const item of aguardando) {
+      await supabase
+        .from('fila_atendimento')
+        .update({ posicao: novaPosicao })
+        .eq('id', item.id as string);
+      novaPosicao += 1;
+    }
+
+    res.json({ message: 'Fila normalizada com sucesso', total: aguardando.length });
+  } catch (error: any) {
+    console.error('Erro no endpoint POST /fila/normalize:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// GET /fila/debug/:pacienteId - Debug: verificar todas as entradas de um paciente na fila
+router.get('/debug/:pacienteId', async (req, res) => {
+  try {
+    const { pacienteId } = req.params;
+    
+    const { data: todasEntradas, error } = await supabase
+      .from('fila_atendimento')
+      .select('*')
+      .eq('paciente_id', pacienteId)
+      .order('criado_em', { ascending: false });
+    
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+    
+    res.json({
+      paciente_id: pacienteId,
+      total_entradas: todasEntradas?.length || 0,
+      entradas: todasEntradas || []
+    });
+  } catch (error: any) {
+    console.error('Erro no endpoint GET /fila/debug/:pacienteId:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// POST /fila/cleanup-orphaned - Limpar entradas órfãs (paciente deletado mas entrada ainda ativa)
+router.post('/cleanup-orphaned', async (_req, res) => {
+  try {
+    // Buscar todas as entradas ativas
+    const { data: entradasAtivas, error: fetchError } = await supabase
+      .from('fila_atendimento')
+      .select('id, paciente_id')
+      .eq('ativo', true)
+      .in('status', ['AGUARDANDO', 'EM_ATENDIMENTO']);
+    
+    if (fetchError) {
+      return res.status(500).json({ error: fetchError.message });
+    }
+    
+    if (!entradasAtivas || entradasAtivas.length === 0) {
+      return res.json({ message: 'Nenhuma entrada para verificar', cleaned: 0 });
+    }
+    
+    let limpas = 0;
+    for (const entrada of entradasAtivas) {
+      const { data: paciente } = await supabase
+        .from('pacientes')
+        .select('id')
+        .eq('id', entrada.paciente_id)
+        .maybeSingle();
+      
+      if (!paciente) {
+        // Paciente não existe mais, desativar entrada
+        await supabase
+          .from('fila_atendimento')
+          .update({ ativo: false })
+          .eq('id', entrada.id);
+        limpas++;
+      }
+    }
+    
+    res.json({ 
+      message: `Limpeza concluída. ${limpas} entrada(s) órfã(s) foram desativadas.`,
+      cleaned: limpas,
+      total_checked: entradasAtivas.length
+    });
+  } catch (error: any) {
+    console.error('Erro no endpoint POST /fila/cleanup-orphaned:', error);
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });

@@ -1,55 +1,106 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { mockAppointments, mockDoctors, mockPayments } from "@/data/mockData";
+import { useEffect, useMemo, useState } from "react";
 import { TrendingUp, Users, DollarSign, Calendar, Download, BarChart3 } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 
 const AdminReports = () => {
-  // Estatísticas gerais
-  const totalAppointments = mockAppointments.length;
-  const totalRevenue = mockPayments.reduce((sum, payment) => sum + payment.amount, 0);
-  const avgTicket = totalRevenue / totalAppointments;
+  const [records, setRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const resp = await fetch('http://localhost:4000/atendimentos/historico');
+        const data = await resp.json();
+        setRecords(Array.isArray(data) ? data : []);
+      } catch (e) {
+        setRecords([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  // Estatísticas gerais a partir do backend
+  const totalAppointments = records.length;
+  const totalRevenue = records.reduce((sum, r) => sum + (Number(r.ordem_servico?.total || 0)), 0);
+  const avgTicket = totalAppointments ? (totalRevenue / totalAppointments) : 0;
 
   // Produtividade por profissional
-  const productivityByDoctor = mockDoctors.map(doctor => {
-    const doctorAppointments = mockAppointments.filter(apt => apt.doctorId === doctor.id);
-    const doctorPayments = mockPayments.filter(payment => {
-      const apt = mockAppointments.find(a => a.patientName === payment.patient);
-      return apt?.doctorId === doctor.id;
-    });
-    const revenue = doctorPayments.reduce((sum, p) => sum + p.amount, 0);
+  const productivityByDoctor = useMemo(() => {
+    const map: Record<string, { atendimentos: number; receita: number } > = {};
+    for (const r of records) {
+      const name = r.profissional?.nome_completo || 'Profissional';
+      if (!map[name]) map[name] = { atendimentos: 0, receita: 0 };
+      map[name].atendimentos += 1;
+      map[name].receita += Number(r.ordem_servico?.total || 0);
+    }
+    return Object.entries(map).map(([fullName, v]) => ({
+      name: (fullName.split(' ').slice(-1)[0]) || fullName,
+      fullName,
+      atendimentos: v.atendimentos,
+      receita: v.receita,
+      ticketMedio: v.atendimentos ? v.receita / v.atendimentos : 0,
+    }));
+  }, [records]);
 
-    return {
-      name: doctor.name.split(' ')[1],
-      fullName: doctor.name,
-      atendimentos: doctorAppointments.length,
-      receita: revenue,
-      ticketMedio: revenue / doctorAppointments.length || 0
-    };
-  });
+  // Comparação de faturamento (últimos 6 meses vs 6 meses anteriores)
+  const revenueComparison = useMemo(() => {
+    const now = new Date();
+    const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const result: Array<{ mes: string; atual: number; anterior: number }> = [];
 
-  // Comparação de faturamento (últimos 6 meses - dados simulados)
-  const revenueComparison = [
-    { mes: "Ago", atual: 15200, anterior: 14300 },
-    { mes: "Set", atual: 16800, anterior: 15100 },
-    { mes: "Out", atual: 18200, anterior: 16900 },
-    { mes: "Nov", atual: 17500, anterior: 18000 },
-    { mes: "Dez", atual: 19800, anterior: 17200 },
-    { mes: "Jan", atual: 21300, anterior: 19500 },
-  ];
+    // Calcular últimos 6 meses
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const mesLabel = meses[d.getMonth()];
+      const mesKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+      // Período atual (últimos 6 meses)
+      const atualSum = records
+        .filter(r => {
+          const dt = new Date(r.hora_fim_atendimento || r.hora_inicio_atendimento || Date.now());
+          const dtKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+          return dtKey === mesKey && dt >= new Date(d.getFullYear(), d.getMonth(), 1) && dt < new Date(d.getFullYear(), d.getMonth() + 1, 1);
+        })
+        .reduce((sum, r) => sum + Number(r.ordem_servico?.total || 0), 0);
+
+      // Período anterior (6 meses antes disso)
+      const dAnterior = new Date(d.getFullYear(), d.getMonth() - 6, 1);
+      const mesKeyAnterior = `${dAnterior.getFullYear()}-${String(dAnterior.getMonth() + 1).padStart(2, '0')}`;
+      const anteriorSum = records
+        .filter(r => {
+          const dt = new Date(r.hora_fim_atendimento || r.hora_inicio_atendimento || Date.now());
+          const dtKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+          return dtKey === mesKeyAnterior;
+        })
+        .reduce((sum, r) => sum + Number(r.ordem_servico?.total || 0), 0);
+
+      result.push({ mes: mesLabel, atual: atualSum, anterior: anteriorSum });
+    }
+
+    return result;
+  }, [records]);
 
   // Atendimentos ao longo do tempo (última semana)
-  const appointmentsOverTime = [
-    { dia: "Seg", quantidade: 12 },
-    { dia: "Ter", quantidade: 8 },
-    { dia: "Qua", quantidade: 15 },
-    { dia: "Qui", quantidade: 6 },
-    { dia: "Sex", quantidade: 13 },
-    { dia: "Sáb", quantidade: 0 },
-    { dia: "Dom", quantidade: 0 },
-  ];
+  // Atendimentos ao longo do tempo (última semana) a partir do backend
+  const appointmentsOverTime = useMemo(() => {
+    const days = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const now = new Date();
+    const counts: Record<number, number> = { 0:0,1:0,2:0,3:0,4:0,5:0,6:0 };
+    for (const r of records) {
+      const d = new Date(r.hora_fim_atendimento || r.hora_inicio_atendimento || Date.now());
+      const diff = (now.getTime() - d.getTime()) / (1000*60*60*24);
+      if (diff <= 7) counts[d.getDay()] = (counts[d.getDay()] || 0) + 1;
+    }
+    // Order starting Monday as in UI example
+    const order = [1,2,3,4,5,6,0];
+    return order.map(idx => ({ dia: days[idx], quantidade: counts[idx] || 0 }));
+  }, [records]);
 
   const handleExportReport = (reportType: string) => {
     toast.success(`Relatório de ${reportType} exportado com sucesso!`);
@@ -128,7 +179,7 @@ const AdminReports = () => {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Profissionais Ativos</p>
-                <p className="text-3xl font-bold text-foreground mt-2">{mockDoctors.length}</p>
+                <p className="text-3xl font-bold text-foreground mt-2">{productivityByDoctor.length}</p>
                 <p className="text-xs text-muted-foreground mt-2">em atividade</p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-chart-3/10 flex items-center justify-center">

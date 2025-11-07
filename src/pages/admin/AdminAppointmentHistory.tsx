@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card } from "@/components/ui/card";
@@ -6,45 +6,57 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { mockAppointments, mockDoctors, Appointment } from "@/data/mockData";
+// Dados agora virão do backend
 import { FileText, User, Calendar, Clock, BarChart3 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 const AdminAppointmentHistory = () => {
   const navigate = useNavigate();
   const [filterDoctor, setFilterDoctor] = useState("all");
+  const [records, setRecords] = useState<any[]>([]);
 
-  // Simular atendimentos concluídos
-  const completedAppointments = mockAppointments.map(apt => ({
-    ...apt,
-    status: "concluido" as const
-  }));
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const resp = await fetch('http://localhost:4000/atendimentos/historico');
+        const data = await resp.json();
+        setRecords(Array.isArray(data) ? data : []);
+      } catch (e) {
+        setRecords([]);
+      }
+    };
+    load();
+  }, []);
 
-  const filteredAppointments = completedAppointments.filter(apt => {
-    if (filterDoctor !== "all" && apt.doctorId !== filterDoctor) return false;
+  const completedAppointments = records;
+  const filteredAppointments = completedAppointments.filter((apt) => {
+    if (filterDoctor !== 'all' && (apt.profissional?.nome_completo !== filterDoctor)) return false;
     return true;
   });
 
   // Estatísticas por profissional
-  const statsByDoctor = mockDoctors.map(doctor => {
-    const doctorAppointments = completedAppointments.filter(apt => apt.doctorId === doctor.id);
-    return {
-      name: doctor.name.split(' ')[1], // Sobrenome
-      atendimentos: doctorAppointments.length,
-      fullName: doctor.name
-    };
-  });
+  const statsByDoctor = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const r of records) {
+      const name = r.profissional?.nome_completo || 'Profissional';
+      map[name] = (map[name] || 0) + 1;
+    }
+    return Object.entries(map).map(([fullName, atendimentos]) => ({
+      name: (fullName.split(' ').slice(-1)[0]) || fullName,
+      atendimentos,
+      fullName,
+    }));
+  }, [records]);
 
   // Estatísticas por tipo de atendimento
-  const statsByType = completedAppointments.reduce((acc: any, apt) => {
-    const existing = acc.find((item: any) => item.name === apt.type);
-    if (existing) {
-      existing.value += 1;
-    } else {
-      acc.push({ name: apt.type, value: 1 });
+  const statsByType = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const r of records) {
+      const t = r.tipo_atendimento || 'Tipo';
+      map[t] = (map[t] || 0) + 1;
     }
-    return acc;
-  }, []);
+    return Object.entries(map).map(([name, value]) => ({ name, value }));
+  }, [records]);
 
   const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
@@ -99,13 +111,13 @@ const AdminAppointmentHistory = () => {
             </div>
           </Card>
 
-          {mockDoctors.slice(0, 3).map((doctor, index) => {
-            const doctorStats = statsByDoctor.find(s => s.fullName === doctor.name);
+          {statsByDoctor.slice(0, 3).map((doctor, index) => {
+            const doctorStats = doctor;
             return (
-              <Card key={doctor.id} className="p-6">
+              <Card key={doctor.fullName} className="p-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">{doctor.name}</p>
+                    <p className="text-sm font-medium text-muted-foreground">{doctor.fullName}</p>
                     <p className="text-3xl font-bold text-foreground mt-2">
                       {doctorStats?.atendimentos || 0}
                     </p>
@@ -221,9 +233,9 @@ const AdminAppointmentHistory = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os Profissionais</SelectItem>
-                  {mockDoctors.map(doctor => (
-                    <SelectItem key={doctor.id} value={doctor.id}>
-                      {doctor.name}
+                  {statsByDoctor.map(doctor => (
+                    <SelectItem key={doctor.fullName} value={doctor.fullName}>
+                      {doctor.fullName}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -251,30 +263,30 @@ const AdminAppointmentHistory = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAppointments.map((appointment) => (
-                  <TableRow key={appointment.id}>
-                    <TableCell className="font-medium">{appointment.patientName}</TableCell>
-                    <TableCell>{appointment.patientCPF}</TableCell>
-                    <TableCell>{getDoctorName(appointment.doctorId)}</TableCell>
-                    <TableCell>{appointment.type}</TableCell>
+                {filteredAppointments.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium">{a.paciente?.nome_completo}</TableCell>
+                    <TableCell>{a.paciente?.cpf || '-'}</TableCell>
+                    <TableCell>{a.profissional?.nome_completo || '-'}</TableCell>
+                    <TableCell>{a.tipo_atendimento}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
-                        {new Date(appointment.date).toLocaleDateString('pt-BR')}
+                        {new Date(a.hora_fim_atendimento || a.hora_inicio_atendimento).toLocaleDateString('pt-BR')}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-muted-foreground" />
-                        {appointment.startTime}
+                        {new Date(a.hora_fim_atendimento || a.hora_inicio_atendimento).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}
                       </div>
                     </TableCell>
-                    <TableCell>{getStatusBadge(appointment.status)}</TableCell>
+                    <TableCell>{getStatusBadge('concluido')}</TableCell>
                     <TableCell>
                       <Button 
                         variant="ghost" 
                         size="sm"
-                        onClick={() => navigate(`/admin/appointment/${appointment.id}`)}
+                        onClick={() => navigate(`/admin/appointment/${a.id}`)}
                       >
                         <FileText className="w-4 h-4 mr-1" />
                         Ver Prontuário

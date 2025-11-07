@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import AddPartnershipDialog from "@/components/AddPartnershipDialog";
 import EditPartnershipDialog from "@/components/EditPartnershipDialog";
+import PartnershipServicesDialog from "@/components/PartnershipServicesDialog";
 
 interface Partnership {
   id: string;
@@ -27,39 +28,78 @@ interface Partnership {
 }
 
 const AdminPartnerships = () => {
-  // Mock data - será substituído por dados do Supabase
-  const [partnerships, setPartnerships] = useState<Partnership[]>([
-    {
-      id: "1",
-      name: "Ótica Visão Clara",
-      cnpj: "12.345.678/0001-90",
-      phone: "(11) 98765-4321",
-      address: "Rua das Flores, 123 - Centro - São Paulo/SP",
-      partnershipDate: "2024-01-15"
-    },
-    {
-      id: "2",
-      name: "Dr. João Silva",
-      cnpj: "987.654.321-00",
-      phone: "(11) 91234-5678",
-      address: "Av. Paulista, 1000 - Bela Vista - São Paulo/SP",
-      partnershipDate: "2024-02-20"
-    },
-  ]);
-
+  const [partnerships, setPartnerships] = useState<Partnership[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [servicesDialogOpen, setServicesDialogOpen] = useState(false);
   const [selectedPartnership, setSelectedPartnership] = useState<Partnership | null>(null);
 
-  const handleAddPartnership = (partnership: Omit<Partnership, "id">) => {
-    const newPartnership = {
-      ...partnership,
-      id: Date.now().toString(),
+  useEffect(() => {
+    const fetchPartnerships = async () => {
+      try {
+        setLoading(true);
+        const resp = await fetch('http://localhost:4000/parcerias');
+        if (!resp.ok) {
+          const errorData = await resp.json().catch(() => ({ error: 'Erro ao carregar parcerias' }));
+          throw new Error(errorData.error || 'Erro ao carregar parcerias');
+        }
+        const data = await resp.json();
+        // Garantir que data é um array
+        if (!Array.isArray(data)) {
+          console.error('Resposta não é um array:', data);
+          setPartnerships([]);
+          return;
+        }
+        setPartnerships(data.map((p: any) => ({
+          id: p.id,
+          name: p.nome,
+          cnpj: p.cnpj_cpf,
+          phone: p.telefone || '',
+          address: p.endereco || '',
+          partnershipDate: p.data_parceria || new Date().toISOString().split('T')[0],
+        })));
+      } catch (e: any) {
+        console.error('Erro ao carregar parcerias:', e);
+        toast.error(e.message || 'Erro ao carregar parcerias');
+        setPartnerships([]);
+      } finally {
+        setLoading(false);
+      }
     };
-    setPartnerships([...partnerships, newPartnership]);
-    toast.success("Parceria adicionada com sucesso!");
-    setIsAddDialogOpen(false);
+    fetchPartnerships();
+  }, []);
+
+  const handleAddPartnership = async (partnership: Omit<Partnership, "id">) => {
+    try {
+      const resp = await fetch('http://localhost:4000/parcerias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: partnership.name,
+          cnpj_cpf: partnership.cnpj,
+          telefone: partnership.phone || null,
+          endereco: partnership.address || null,
+          data_parceria: partnership.partnershipDate,
+        })
+      });
+      if (!resp.ok) throw new Error('Erro ao adicionar parceria');
+      const p = await resp.json();
+      setPartnerships([...partnerships, {
+        id: p.id,
+        name: p.nome,
+        cnpj: p.cnpj_cpf,
+        phone: p.telefone || '',
+        address: p.endereco || '',
+        partnershipDate: p.data_parceria,
+      }]);
+      toast.success("Parceria adicionada com sucesso!");
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error('Erro ao adicionar parceria:', error);
+      toast.error('Erro ao adicionar parceria');
+    }
   };
 
   const handleEditClick = (partnership: Partnership) => {
@@ -67,13 +107,30 @@ const AdminPartnerships = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleEditPartnership = (updatedPartnership: Partnership) => {
-    setPartnerships(partnerships.map(p => 
-      p.id === updatedPartnership.id ? updatedPartnership : p
-    ));
-    toast.success("Parceria atualizada com sucesso!");
-    setIsEditDialogOpen(false);
-    setSelectedPartnership(null);
+  const handleEditPartnership = async (updatedPartnership: Partnership) => {
+    try {
+      const resp = await fetch(`http://localhost:4000/parcerias/${updatedPartnership.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: updatedPartnership.name,
+          cnpj_cpf: updatedPartnership.cnpj,
+          telefone: updatedPartnership.phone || null,
+          endereco: updatedPartnership.address || null,
+          data_parceria: updatedPartnership.partnershipDate,
+        })
+      });
+      if (!resp.ok) throw new Error('Erro ao atualizar parceria');
+      setPartnerships(partnerships.map(p => 
+        p.id === updatedPartnership.id ? updatedPartnership : p
+      ));
+      toast.success("Parceria atualizada com sucesso!");
+      setIsEditDialogOpen(false);
+      setSelectedPartnership(null);
+    } catch (error) {
+      console.error('Erro ao atualizar parceria:', error);
+      toast.error('Erro ao atualizar parceria');
+    }
   };
 
   const handleDeleteClick = (partnership: Partnership) => {
@@ -81,12 +138,20 @@ const AdminPartnerships = () => {
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
-    if (selectedPartnership) {
+  const handleDeleteConfirm = async () => {
+    if (!selectedPartnership) return;
+    try {
+      const resp = await fetch(`http://localhost:4000/parcerias/${selectedPartnership.id}`, {
+        method: 'DELETE',
+      });
+      if (!resp.ok) throw new Error('Erro ao remover parceria');
       setPartnerships(partnerships.filter(p => p.id !== selectedPartnership.id));
       toast.success("Parceria removida com sucesso!");
       setDeleteDialogOpen(false);
       setSelectedPartnership(null);
+    } catch (error) {
+      console.error('Erro ao remover parceria:', error);
+      toast.error('Erro ao remover parceria');
     }
   };
 
@@ -111,8 +176,15 @@ const AdminPartnerships = () => {
           </Button>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {partnerships.map((partnership) => (
+        {loading ? (
+          <Card className="p-12">
+            <div className="text-center text-muted-foreground">
+              <p>Carregando parcerias...</p>
+            </div>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {partnerships.map((partnership) => (
             <Card key={partnership.id} className="relative">
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -132,13 +204,26 @@ const AdminPartnerships = () => {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleEditClick(partnership)}
+                      title="Editar"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
+                      onClick={() => {
+                        setSelectedPartnership(partnership);
+                        setServicesDialogOpen(true);
+                      }}
+                      title="Gerenciar Serviços"
+                    >
+                      <Building2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleDeleteClick(partnership)}
+                      title="Excluir"
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
@@ -160,10 +245,11 @@ const AdminPartnerships = () => {
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
-        {partnerships.length === 0 && (
+        {!loading && partnerships.length === 0 && (
           <Card className="p-12">
             <div className="text-center">
               <Building2 className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -212,6 +298,15 @@ const AdminPartnerships = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {selectedPartnership && (
+        <PartnershipServicesDialog
+          open={servicesDialogOpen}
+          onOpenChange={setServicesDialogOpen}
+          partnershipId={selectedPartnership.id}
+          partnershipName={selectedPartnership.name}
+        />
+      )}
     </DashboardLayout>
   );
 };

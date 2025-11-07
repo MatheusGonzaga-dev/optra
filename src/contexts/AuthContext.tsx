@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   usuario: Usuario | null;
   loading: boolean;
+  permissions: string[];
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         fetchUsuario(session.user.id);
       } else {
         setUsuario(null);
+        setPermissions([]);
         setLoading(false);
       }
     });
@@ -57,11 +60,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
       setUsuario(data as Usuario);
+      
+      // Buscar permissões se o usuário tiver grupo de acesso
+      if (data?.grupo_acesso_id) {
+        await fetchPermissions(data.grupo_acesso_id);
+      } else {
+        setPermissions([]);
+      }
     } catch (error) {
       console.error('Erro ao buscar dados do usuário:', error);
       toast.error('Erro ao carregar dados do usuário');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPermissions = async (grupoId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('grupo_permissao')
+        .select('permissoes(nome)')
+        .eq('grupo_id', grupoId);
+
+      if (error) throw error;
+      
+      const permissionsList = data?.map((item: any) => item.permissoes?.nome).filter(Boolean) || [];
+      setPermissions(permissionsList);
+    } catch (error) {
+      console.error('Erro ao buscar permissões:', error);
+      setPermissions([]);
     }
   };
 
@@ -88,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Limpar estado local primeiro
       setUser(null);
       setUsuario(null);
+      setPermissions([]);
       
       // Chamar signOut do Supabase (isso já limpa os tokens automaticamente)
       const { error } = await supabase.auth.signOut();
@@ -97,12 +125,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Mesmo com erro, garante limpeza do estado
       setUser(null);
       setUsuario(null);
+      setPermissions([]);
       toast.error('Erro ao sair do sistema');
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, usuario, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, usuario, loading, permissions, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

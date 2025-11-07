@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,18 @@ const formSchema = z.object({
 const NewPatient = () => {
   const navigate = useNavigate();
   const { usuario } = useAuth();
+  const [services, setServices] = useState<Array<{id:string; nome:string; valor:number}>>([]);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const resp = await fetch('http://localhost:4000/servicos');
+        const data = await resp.json();
+        setServices((data || []).map((s: any) => ({ id: s.id, nome: s.nome, valor: Number(s.valor) })));
+      } catch { /* ignore */ }
+    };
+    fetchServices();
+  }, []);
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -144,11 +157,13 @@ const NewPatient = () => {
       
       if (deveEnviarParaFila) {
         try {
-          const tipoAtendimentoMap: Record<string, string> = {
-            'consulta-completa': 'CONSULTA_COMPLETA',
-            'refacao': 'REFRACAO',
-            'retorno': 'RETORNO',
-            'exame-lente-contato': 'EXAME_LENTE_CONTATO',
+          const servicoSelecionado = services.find(s => s.id === values.examType);
+          const nome = servicoSelecionado?.nome || '';
+          const tipoAtendimentoMapByName: Record<string, string> = {
+            'Consulta Completa': 'CONSULTA_COMPLETA',
+            'Refração': 'REFRACAO',
+            'Retorno': 'RETORNO',
+            'Exame para Lente de Contato': 'EXAME_LENTE_CONTATO',
           };
 
           const formaPagamentoMap: Record<string, string> = {
@@ -160,12 +175,12 @@ const NewPatient = () => {
 
           const filaData = {
             paciente_id: pacienteCadastrado.id,
-            tipo_atendimento: tipoAtendimentoMap[values.examType] || 'CONSULTA_COMPLETA',
+            tipo_atendimento: tipoAtendimentoMapByName[nome] || 'CONSULTA_COMPLETA',
             prioridade: values.priority || 'NORMAL',
             sintomas: values.symptoms,
             usa_medicamentos: values.medications === 'yes',
             medicamentos_lista: values.medications === 'yes' ? values.medicationsList : undefined,
-            valor_consulta: parseFloat(values.paymentAmount.replace(/[^\d,.-]/g, '').replace(',', '.')) || undefined,
+            valor_consulta: servicoSelecionado ? Number(servicoSelecionado.valor) : undefined,
             forma_pagamento: formaPagamentoMap[values.paymentMethod] || 'PENDENTE',
             cadastrado_por_id: usuario?.id,
           };
@@ -428,17 +443,23 @@ const NewPatient = () => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tipo de Exame</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={(val) => {
+                      field.onChange(val);
+                      const s = services.find(sv => sv.id === val);
+                      if (s) {
+                        // opcional: ajustar automaticamente o valor de recebimento
+                        form.setValue('paymentAmount', String(s.valor));
+                      }
+                    }} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione o tipo de exame" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="consulta-completa">Consulta Completa</SelectItem>
-                        <SelectItem value="refacao">Refração</SelectItem>
-                        <SelectItem value="retorno">Retorno</SelectItem>
-                        <SelectItem value="exame-lente-contato">Exame para Lente de Contato</SelectItem>
+                        {services.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -610,3 +631,1227 @@ const NewPatient = () => {
 };
 
 export default NewPatient;
+
+                      </FormControl>
+
+                      <FormMessage />
+
+                    </FormItem>
+
+                  )}
+
+                />
+
+              </div>
+
+            </Card>
+
+
+
+            {/* Anamnese */}
+
+            <Card className="p-6">
+
+              <div className="flex items-center justify-between mb-4">
+
+                <h3 className="text-lg font-semibold">Anamnese</h3>
+
+                <FormField
+
+                  control={form.control}
+
+                  name="skipAnamnesis"
+
+                  render={({ field }) => (
+
+                    <FormItem className="flex items-center gap-2">
+
+                      <FormControl>
+
+                        <div className="flex items-center gap-2">
+
+                          <input
+
+                            type="checkbox"
+
+                            checked={field.value}
+
+                            onChange={field.onChange}
+
+                            className="w-4 h-4 rounded border-border"
+
+                          />
+
+                          <FormLabel className="!mt-0 cursor-pointer">
+
+                            Pular Anamnese
+
+                          </FormLabel>
+
+                        </div>
+
+                      </FormControl>
+
+                    </FormItem>
+
+                  )}
+
+                />
+
+              </div>
+
+              <div className="space-y-4">{!watchSkipAnamnesis && (
+
+                <>
+
+                <FormField
+
+                  control={form.control}
+
+                  name="symptoms"
+
+                  render={({ field }) => (
+
+                    <FormItem>
+
+                      <FormLabel>Sintomas</FormLabel>
+
+                      <FormControl>
+
+                        <Textarea
+
+                          placeholder="Descreva os sintomas apresentados pelo paciente"
+
+                          className="min-h-[100px]"
+
+                          {...field}
+
+                        />
+
+                      </FormControl>
+
+                      <FormMessage />
+
+                    </FormItem>
+
+                  )}
+
+                />
+
+
+
+                <FormField
+
+                  control={form.control}
+
+                  name="medications"
+
+                  render={({ field }) => (
+
+                    <FormItem>
+
+                      <FormLabel>Faz uso de medicamentos?</FormLabel>
+
+                      <FormControl>
+
+                        <RadioGroup
+
+                          onValueChange={field.onChange}
+
+                          defaultValue={field.value}
+
+                          className="flex gap-4"
+
+                        >
+
+                          <div className="flex items-center space-x-2">
+
+                            <RadioGroupItem value="yes" id="med-yes" />
+
+                            <label htmlFor="med-yes" className="cursor-pointer">
+
+                              Sim
+
+                            </label>
+
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+
+                            <RadioGroupItem value="no" id="med-no" />
+
+                            <label htmlFor="med-no" className="cursor-pointer">
+
+                              Não
+
+                            </label>
+
+                          </div>
+
+                        </RadioGroup>
+
+                      </FormControl>
+
+                      <FormMessage />
+
+                    </FormItem>
+
+                  )}
+
+                />
+
+
+
+                {watchMedications === "yes" && (
+
+                  <FormField
+
+                    control={form.control}
+
+                    name="medicationsList"
+
+                    render={({ field }) => (
+
+                      <FormItem>
+
+                        <FormLabel>Quais medicamentos?</FormLabel>
+
+                        <FormControl>
+
+                          <Textarea
+
+                            placeholder="Liste os medicamentos que o paciente toma"
+
+                            {...field}
+
+                          />
+
+                        </FormControl>
+
+                        <FormMessage />
+
+                      </FormItem>
+
+                    )}
+
+                  />
+
+                )}
+
+                </>
+
+              )}
+
+              {watchSkipAnamnesis && (
+
+                <p className="text-sm text-muted-foreground">
+
+                  Anamnese será preenchida posteriormente
+
+                </p>
+
+              )}
+
+              </div>
+
+            </Card>
+
+
+
+            {/* Exame Clínico */}
+
+            {!watchSkipAnamnesis && (
+
+            <Card className="p-6">
+
+              <h3 className="text-lg font-semibold mb-4">Exame Clínico</h3>
+
+              <FormField
+
+                control={form.control}
+
+                name="examType"
+
+                render={({ field }) => (
+
+                  <FormItem>
+
+                    <FormLabel>Tipo de Exame</FormLabel>
+
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+
+                      <FormControl>
+
+                        <SelectTrigger>
+
+                          <SelectValue placeholder="Selecione o tipo de exame" />
+
+                        </SelectTrigger>
+
+                      </FormControl>
+
+                      <SelectContent>
+
+                        <SelectItem value="consulta-completa">Consulta Completa</SelectItem>
+
+                        <SelectItem value="refacao">Refração</SelectItem>
+
+                        <SelectItem value="retorno">Retorno</SelectItem>
+
+                        <SelectItem value="exame-lente-contato">Exame para Lente de Contato</SelectItem>
+
+                      </SelectContent>
+
+                    </Select>
+
+                    <FormMessage />
+
+                  </FormItem>
+
+                )}
+
+              />
+
+            </Card>
+
+            )}
+
+
+
+            {/* Ótica Parceira */}
+
+            <Card className="p-6">
+
+              <h3 className="text-lg font-semibold mb-4">Indicação</h3>
+
+              <FormField
+
+                control={form.control}
+
+                name="partnerOptic"
+
+                render={({ field }) => (
+
+                  <FormItem>
+
+                    <FormLabel>Ótica Parceira (Opcional)</FormLabel>
+
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+
+                      <FormControl>
+
+                        <SelectTrigger>
+
+                          <SelectValue placeholder="Selecione a ótica de indicação" />
+
+                        </SelectTrigger>
+
+                      </FormControl>
+
+                      <SelectContent>
+
+                        <SelectItem value="none">Sem indicação</SelectItem>
+
+                        {partnerOptics.map((optic) => (
+
+                          <SelectItem key={optic.id} value={optic.id}>
+
+                            {optic.name}
+
+                          </SelectItem>
+
+                        ))}
+
+                      </SelectContent>
+
+                    </Select>
+
+                    <FormMessage />
+
+                  </FormItem>
+
+                )}
+
+              />
+
+            </Card>
+
+
+
+            {/* Dados de Recebimento */}
+
+            <Card className="p-6">
+
+              <h3 className="text-lg font-semibold mb-4">Dados de Recebimento</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <FormField
+
+                  control={form.control}
+
+                  name="paymentAmount"
+
+                  render={({ field }) => (
+
+                    <FormItem>
+
+                      <FormLabel>Valor</FormLabel>
+
+                      <FormControl>
+
+                        <Input placeholder="R$ 0,00" {...field} />
+
+                      </FormControl>
+
+                      <FormMessage />
+
+                    </FormItem>
+
+                  )}
+
+                />
+
+
+
+                <FormField
+
+                  control={form.control}
+
+                  name="paymentMethod"
+
+                  render={({ field }) => (
+
+                    <FormItem>
+
+                      <FormLabel>Forma de Pagamento</FormLabel>
+
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+
+                        <FormControl>
+
+                          <SelectTrigger>
+
+                            <SelectValue placeholder="Selecione" />
+
+                          </SelectTrigger>
+
+                        </FormControl>
+
+                        <SelectContent>
+
+                          <SelectItem value="dinheiro">Dinheiro</SelectItem>
+
+                          <SelectItem value="cartao-debito">Cartão de Débito</SelectItem>
+
+                          <SelectItem value="cartao-credito">Cartão de Crédito</SelectItem>
+
+                          <SelectItem value="pix">PIX</SelectItem>
+
+                        </SelectContent>
+
+                      </Select>
+
+                      <FormMessage />
+
+                    </FormItem>
+
+                  )}
+
+                />
+
+              </div>
+
+            </Card>
+
+
+
+            {/* Enviar para Fila */}
+
+            {!watchSkipAnamnesis && (
+
+            <Card className="p-6">
+
+              <h3 className="text-lg font-semibold mb-4">Fila de Atendimento</h3>
+
+              <div className="space-y-4">
+
+                <FormField
+
+                  control={form.control}
+
+                  name="sendToQueue"
+
+                  render={({ field }) => (
+
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+
+                      <FormControl>
+
+                        <Checkbox
+
+                          checked={field.value === true}
+
+                          onCheckedChange={(checked) => {
+
+                            // Garantir que seja sempre booleano
+
+                            field.onChange(checked === true);
+
+                          }}
+
+                        />
+
+                      </FormControl>
+
+                      <div className="space-y-1 leading-none flex-1">
+
+                        <FormLabel 
+
+                          className="cursor-pointer font-semibold"
+
+                          onClick={() => {
+
+                            // Permitir clicar no label para marcar/desmarcar
+
+                            field.onChange(!field.value);
+
+                          }}
+
+                        >
+
+                          Enviar para a fila de atendimento?
+
+                        </FormLabel>
+
+                        <p className="text-sm text-muted-foreground">
+
+                          {field.value 
+
+                            ? "O paciente será adicionado à fila após o cadastro" 
+
+                            : "Marque esta opção se deseja que o paciente seja adicionado à fila imediatamente"}
+
+                        </p>
+
+                      </div>
+
+                      <FormMessage />
+
+                    </FormItem>
+
+                  )}
+
+                />
+
+
+
+                {watchSendToQueue && (
+
+                  <FormField
+
+                    control={form.control}
+
+                    name="priority"
+
+                    render={({ field }) => (
+
+                      <FormItem>
+
+                        <FormLabel>Prioridade</FormLabel>
+
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+
+                          <FormControl>
+
+                            <SelectTrigger>
+
+                              <SelectValue placeholder="Selecione a prioridade" />
+
+                            </SelectTrigger>
+
+                          </FormControl>
+
+                          <SelectContent>
+
+                            <SelectItem value="NORMAL">Normal</SelectItem>
+
+                            <SelectItem value="ALTA">Alta (Preferencial)</SelectItem>
+
+                            <SelectItem value="URGENTE">Urgente</SelectItem>
+
+                          </SelectContent>
+
+                        </Select>
+
+                        <FormMessage />
+
+                      </FormItem>
+
+                    )}
+
+                  />
+
+                )}
+
+              </div>
+
+            </Card>
+
+            )}
+
+
+
+            <div className="flex gap-4 justify-end">
+
+              <Button
+
+                type="button"
+
+                variant="outline"
+
+                onClick={() => navigate("/secretary/dashboard")}
+
+              >
+
+                Cancelar
+
+              </Button>
+
+              <Button type="submit" size="lg">
+
+                {watchSendToQueue && !watchSkipAnamnesis ? "Cadastrar e Enviar para Fila" : "Cadastrar Paciente"}
+
+              </Button>
+
+            </div>
+
+          </form>
+
+        </Form>
+
+      </div>
+
+    </DashboardLayout>
+
+  );
+
+};
+
+
+
+export default NewPatient;
+
+
+
+                      </FormControl>
+
+                      <FormMessage />
+
+                    </FormItem>
+
+                  )}
+
+                />
+
+              </div>
+
+            </Card>
+
+
+
+            {/* Anamnese */}
+
+            <Card className="p-6">
+
+              <div className="flex items-center justify-between mb-4">
+
+                <h3 className="text-lg font-semibold">Anamnese</h3>
+
+                <FormField
+
+                  control={form.control}
+
+                  name="skipAnamnesis"
+
+                  render={({ field }) => (
+
+                    <FormItem className="flex items-center gap-2">
+
+                      <FormControl>
+
+                        <div className="flex items-center gap-2">
+
+                          <input
+
+                            type="checkbox"
+
+                            checked={field.value}
+
+                            onChange={field.onChange}
+
+                            className="w-4 h-4 rounded border-border"
+
+                          />
+
+                          <FormLabel className="!mt-0 cursor-pointer">
+
+                            Pular Anamnese
+
+                          </FormLabel>
+
+                        </div>
+
+                      </FormControl>
+
+                    </FormItem>
+
+                  )}
+
+                />
+
+              </div>
+
+              <div className="space-y-4">{!watchSkipAnamnesis && (
+
+                <>
+
+                <FormField
+
+                  control={form.control}
+
+                  name="symptoms"
+
+                  render={({ field }) => (
+
+                    <FormItem>
+
+                      <FormLabel>Sintomas</FormLabel>
+
+                      <FormControl>
+
+                        <Textarea
+
+                          placeholder="Descreva os sintomas apresentados pelo paciente"
+
+                          className="min-h-[100px]"
+
+                          {...field}
+
+                        />
+
+                      </FormControl>
+
+                      <FormMessage />
+
+                    </FormItem>
+
+                  )}
+
+                />
+
+
+
+                <FormField
+
+                  control={form.control}
+
+                  name="medications"
+
+                  render={({ field }) => (
+
+                    <FormItem>
+
+                      <FormLabel>Faz uso de medicamentos?</FormLabel>
+
+                      <FormControl>
+
+                        <RadioGroup
+
+                          onValueChange={field.onChange}
+
+                          defaultValue={field.value}
+
+                          className="flex gap-4"
+
+                        >
+
+                          <div className="flex items-center space-x-2">
+
+                            <RadioGroupItem value="yes" id="med-yes" />
+
+                            <label htmlFor="med-yes" className="cursor-pointer">
+
+                              Sim
+
+                            </label>
+
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+
+                            <RadioGroupItem value="no" id="med-no" />
+
+                            <label htmlFor="med-no" className="cursor-pointer">
+
+                              Não
+
+                            </label>
+
+                          </div>
+
+                        </RadioGroup>
+
+                      </FormControl>
+
+                      <FormMessage />
+
+                    </FormItem>
+
+                  )}
+
+                />
+
+
+
+                {watchMedications === "yes" && (
+
+                  <FormField
+
+                    control={form.control}
+
+                    name="medicationsList"
+
+                    render={({ field }) => (
+
+                      <FormItem>
+
+                        <FormLabel>Quais medicamentos?</FormLabel>
+
+                        <FormControl>
+
+                          <Textarea
+
+                            placeholder="Liste os medicamentos que o paciente toma"
+
+                            {...field}
+
+                          />
+
+                        </FormControl>
+
+                        <FormMessage />
+
+                      </FormItem>
+
+                    )}
+
+                  />
+
+                )}
+
+                </>
+
+              )}
+
+              {watchSkipAnamnesis && (
+
+                <p className="text-sm text-muted-foreground">
+
+                  Anamnese será preenchida posteriormente
+
+                </p>
+
+              )}
+
+              </div>
+
+            </Card>
+
+
+
+            {/* Exame Clínico */}
+
+            {!watchSkipAnamnesis && (
+
+            <Card className="p-6">
+
+              <h3 className="text-lg font-semibold mb-4">Exame Clínico</h3>
+
+              <FormField
+
+                control={form.control}
+
+                name="examType"
+
+                render={({ field }) => (
+
+                  <FormItem>
+
+                    <FormLabel>Tipo de Exame</FormLabel>
+
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+
+                      <FormControl>
+
+                        <SelectTrigger>
+
+                          <SelectValue placeholder="Selecione o tipo de exame" />
+
+                        </SelectTrigger>
+
+                      </FormControl>
+
+                      <SelectContent>
+
+                        <SelectItem value="consulta-completa">Consulta Completa</SelectItem>
+
+                        <SelectItem value="refacao">Refração</SelectItem>
+
+                        <SelectItem value="retorno">Retorno</SelectItem>
+
+                        <SelectItem value="exame-lente-contato">Exame para Lente de Contato</SelectItem>
+
+                      </SelectContent>
+
+                    </Select>
+
+                    <FormMessage />
+
+                  </FormItem>
+
+                )}
+
+              />
+
+            </Card>
+
+            )}
+
+
+
+            {/* Ótica Parceira */}
+
+            <Card className="p-6">
+
+              <h3 className="text-lg font-semibold mb-4">Indicação</h3>
+
+              <FormField
+
+                control={form.control}
+
+                name="partnerOptic"
+
+                render={({ field }) => (
+
+                  <FormItem>
+
+                    <FormLabel>Ótica Parceira (Opcional)</FormLabel>
+
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+
+                      <FormControl>
+
+                        <SelectTrigger>
+
+                          <SelectValue placeholder="Selecione a ótica de indicação" />
+
+                        </SelectTrigger>
+
+                      </FormControl>
+
+                      <SelectContent>
+
+                        <SelectItem value="none">Sem indicação</SelectItem>
+
+                        {partnerOptics.map((optic) => (
+
+                          <SelectItem key={optic.id} value={optic.id}>
+
+                            {optic.name}
+
+                          </SelectItem>
+
+                        ))}
+
+                      </SelectContent>
+
+                    </Select>
+
+                    <FormMessage />
+
+                  </FormItem>
+
+                )}
+
+              />
+
+            </Card>
+
+
+
+            {/* Dados de Recebimento */}
+
+            <Card className="p-6">
+
+              <h3 className="text-lg font-semibold mb-4">Dados de Recebimento</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <FormField
+
+                  control={form.control}
+
+                  name="paymentAmount"
+
+                  render={({ field }) => (
+
+                    <FormItem>
+
+                      <FormLabel>Valor</FormLabel>
+
+                      <FormControl>
+
+                        <Input placeholder="R$ 0,00" {...field} />
+
+                      </FormControl>
+
+                      <FormMessage />
+
+                    </FormItem>
+
+                  )}
+
+                />
+
+
+
+                <FormField
+
+                  control={form.control}
+
+                  name="paymentMethod"
+
+                  render={({ field }) => (
+
+                    <FormItem>
+
+                      <FormLabel>Forma de Pagamento</FormLabel>
+
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+
+                        <FormControl>
+
+                          <SelectTrigger>
+
+                            <SelectValue placeholder="Selecione" />
+
+                          </SelectTrigger>
+
+                        </FormControl>
+
+                        <SelectContent>
+
+                          <SelectItem value="dinheiro">Dinheiro</SelectItem>
+
+                          <SelectItem value="cartao-debito">Cartão de Débito</SelectItem>
+
+                          <SelectItem value="cartao-credito">Cartão de Crédito</SelectItem>
+
+                          <SelectItem value="pix">PIX</SelectItem>
+
+                        </SelectContent>
+
+                      </Select>
+
+                      <FormMessage />
+
+                    </FormItem>
+
+                  )}
+
+                />
+
+              </div>
+
+            </Card>
+
+
+
+            {/* Enviar para Fila */}
+
+            {!watchSkipAnamnesis && (
+
+            <Card className="p-6">
+
+              <h3 className="text-lg font-semibold mb-4">Fila de Atendimento</h3>
+
+              <div className="space-y-4">
+
+                <FormField
+
+                  control={form.control}
+
+                  name="sendToQueue"
+
+                  render={({ field }) => (
+
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+
+                      <FormControl>
+
+                        <Checkbox
+
+                          checked={field.value === true}
+
+                          onCheckedChange={(checked) => {
+
+                            // Garantir que seja sempre booleano
+
+                            field.onChange(checked === true);
+
+                          }}
+
+                        />
+
+                      </FormControl>
+
+                      <div className="space-y-1 leading-none flex-1">
+
+                        <FormLabel 
+
+                          className="cursor-pointer font-semibold"
+
+                          onClick={() => {
+
+                            // Permitir clicar no label para marcar/desmarcar
+
+                            field.onChange(!field.value);
+
+                          }}
+
+                        >
+
+                          Enviar para a fila de atendimento?
+
+                        </FormLabel>
+
+                        <p className="text-sm text-muted-foreground">
+
+                          {field.value 
+
+                            ? "O paciente será adicionado à fila após o cadastro" 
+
+                            : "Marque esta opção se deseja que o paciente seja adicionado à fila imediatamente"}
+
+                        </p>
+
+                      </div>
+
+                      <FormMessage />
+
+                    </FormItem>
+
+                  )}
+
+                />
+
+
+
+                {watchSendToQueue && (
+
+                  <FormField
+
+                    control={form.control}
+
+                    name="priority"
+
+                    render={({ field }) => (
+
+                      <FormItem>
+
+                        <FormLabel>Prioridade</FormLabel>
+
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+
+                          <FormControl>
+
+                            <SelectTrigger>
+
+                              <SelectValue placeholder="Selecione a prioridade" />
+
+                            </SelectTrigger>
+
+                          </FormControl>
+
+                          <SelectContent>
+
+                            <SelectItem value="NORMAL">Normal</SelectItem>
+
+                            <SelectItem value="ALTA">Alta (Preferencial)</SelectItem>
+
+                            <SelectItem value="URGENTE">Urgente</SelectItem>
+
+                          </SelectContent>
+
+                        </Select>
+
+                        <FormMessage />
+
+                      </FormItem>
+
+                    )}
+
+                  />
+
+                )}
+
+              </div>
+
+            </Card>
+
+            )}
+
+
+
+            <div className="flex gap-4 justify-end">
+
+              <Button
+
+                type="button"
+
+                variant="outline"
+
+                onClick={() => navigate("/secretary/dashboard")}
+
+              >
+
+                Cancelar
+
+              </Button>
+
+              <Button type="submit" size="lg">
+
+                {watchSendToQueue && !watchSkipAnamnesis ? "Cadastrar e Enviar para Fila" : "Cadastrar Paciente"}
+
+              </Button>
+
+            </div>
+
+          </form>
+
+        </Form>
+
+      </div>
+
+    </DashboardLayout>
+
+  );
+
+};
+
+
+
+export default NewPatient;
+
+

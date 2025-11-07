@@ -5,8 +5,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Users, Search, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, Search, Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface QueueItem {
@@ -35,14 +36,22 @@ const PatientQueue = () => {
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Carregar fila do backend
+  // Carregar fila do backend (tanto AGUARDANDO quanto EM_ATENDIMENTO)
   const fetchQueue = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:4000/fila');
-      if (!response.ok) throw new Error('Erro ao buscar fila');
-      const data = await response.json();
-      setQueue(data);
+      // Buscar AGUARDANDO
+      const responseAguardando = await fetch('http://localhost:4000/fila?status=AGUARDANDO');
+      // Buscar EM_ATENDIMENTO
+      const responseEmAtendimento = await fetch('http://localhost:4000/fila?status=EM_ATENDIMENTO');
+      
+      if (!responseAguardando.ok || !responseEmAtendimento.ok) throw new Error('Erro ao buscar fila');
+      
+      const dataAguardando = await responseAguardando.json();
+      const dataEmAtendimento = await responseEmAtendimento.json();
+      
+      // Combinar ambos os arrays
+      setQueue([...dataAguardando, ...dataEmAtendimento]);
     } catch (error: any) {
       console.error('Erro ao carregar fila:', error);
       toast.error('Erro ao carregar fila de atendimento');
@@ -58,7 +67,21 @@ const PatientQueue = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const filteredQueue = queue.filter((patient) => {
+  // Separar fila por status
+  const aguardandoQueue = queue.filter(item => item.status === 'AGUARDANDO');
+  const emAtendimentoQueue = queue.filter(item => item.status === 'EM_ATENDIMENTO');
+
+  // Aplicar filtro de busca
+  const filteredAguardando = aguardandoQueue.filter((patient) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      patient.pacientes.nome_completo.toLowerCase().includes(query) ||
+      (patient.pacientes.cpf?.replace(/\D/g, "").includes(query.replace(/\D/g, "")) || false)
+    );
+  });
+
+  const filteredEmAtendimento = emAtendimentoQueue.filter((patient) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -155,9 +178,6 @@ const PatientQueue = () => {
               <h3 className="text-lg font-semibold">
                 Pacientes na Fila
               </h3>
-              <Badge variant="outline" className="text-sm">
-                {filteredQueue.filter((p) => p.status === 'AGUARDANDO').length} aguardando
-              </Badge>
             </div>
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -175,16 +195,27 @@ const PatientQueue = () => {
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
               <p className="text-muted-foreground">Carregando fila...</p>
             </div>
-          ) : filteredQueue.length === 0 ? (
+          ) : (
+            <Tabs defaultValue="aguardando" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="aguardando">
+                  Aguardando ({filteredAguardando.length})
+                </TabsTrigger>
+                <TabsTrigger value="em-atendimento">
+                  Em Atendimento ({filteredEmAtendimento.length})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="aguardando" className="space-y-4">
+                {filteredAguardando.length === 0 ? (
             <div className="text-center py-12">
               <Users className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
               <p className="text-muted-foreground">
-                {searchQuery ? "Nenhum paciente encontrado" : "Nenhum paciente na fila no momento"}
+                      {searchQuery ? "Nenhum paciente encontrado" : "Nenhum paciente aguardando"}
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredQueue.filter(p => p.status === 'AGUARDANDO').map((patient) => {
+                  filteredAguardando.map((patient) => {
                 const age = patient.pacientes.data_nascimento 
                   ? calculateAge(patient.pacientes.data_nascimento) 
                   : null;
@@ -285,8 +316,140 @@ const PatientQueue = () => {
                     </div>
                   </div>
                 );
-              })}
+                  })
+                )}
+              </TabsContent>
+
+              <TabsContent value="em-atendimento" className="space-y-4">
+                {filteredEmAtendimento.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Users className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+                    <p className="text-muted-foreground">
+                      {searchQuery ? "Nenhum paciente encontrado" : "Nenhum paciente em atendimento no momento"}
+                    </p>
+                  </div>
+                ) : (
+                  filteredEmAtendimento.map((patient) => {
+                    const age = patient.pacientes.data_nascimento 
+                      ? calculateAge(patient.pacientes.data_nascimento) 
+                      : null;
+
+                    return (
+                      <div
+                        key={patient.id}
+                        className="border rounded-lg overflow-hidden"
+                      >
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 border-b">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center font-bold text-lg">
+                              {patient.posicao}
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-lg text-gray-900 dark:text-white">
+                                {patient.pacientes.nome_completo}
+                              </h3>
+                              <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                                {patient.pacientes.cpf && (
+                                  <span className="font-mono">{patient.pacientes.cpf}</span>
+                                )}
+                                {age && <span>{age} anos</span>}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge className={getPrioridadeBadge(patient.prioridade)}>
+                              {patient.prioridade}
+                            </Badge>
+                            <Badge className="bg-green-600 text-white">
+                              EM ATENDIMENTO
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Conteúdo */}
+                        <div className="p-6 space-y-4">
+                          {/* Informações do Atendimento */}
+                          <div>
+                            <h4 className="font-semibold text-sm text-gray-500 dark:text-gray-400 mb-3">
+                              INFORMAÇÕES DO ATENDIMENTO
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              <div>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Tipo</span>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {formatTipoAtendimento(patient.tipo_atendimento)}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Chegada</span>
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {formatTime(patient.hora_chegada)}
+                                </p>
+                              </div>
+                              {patient.pacientes.telefone && (
+                                <div>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Telefone</span>
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {patient.pacientes.telefone}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Anamnese */}
+                          {(patient.sintomas || patient.usa_medicamentos !== undefined) && (
+                            <div>
+                              <h4 className="font-semibold text-sm text-gray-500 dark:text-gray-400 mb-3">
+                                ANAMNESE
+                              </h4>
+                              <div className="space-y-3">
+                                {patient.sintomas && (
+                                  <div>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Sintomas Relatados</span>
+                                    <p className="text-sm text-gray-900 dark:text-white">
+                                      {patient.sintomas}
+                                    </p>
+                                  </div>
+                                )}
+                                <div>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Medicamentos em Uso</span>
+                                  <p className="text-sm text-gray-900 dark:text-white">
+                                    {patient.usa_medicamentos && patient.medicamentos_lista 
+                                      ? patient.medicamentos_lista 
+                                      : "Nenhum"}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Botões de Ação */}
+                          <div className="flex justify-end gap-2 pt-4 border-t">
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                // Navegar para página de detalhes do paciente (onde tem o prontuário)
+                                navigate(`/optometrist/patient/${patient.pacientes.id}`);
+                              }}
+                            >
+                              <FileText className="w-4 h-4 mr-2" />
+                              Abrir Prontuário
+                            </Button>
+                            <Button
+                              onClick={() => navigate(`/optometrist/attendance/${patient.id}`)}
+                            >
+                              Continuar Atendimento
+                            </Button>
+                          </div>
+                        </div>
             </div>
+                    );
+                  })
+                )}
+              </TabsContent>
+            </Tabs>
           )}
         </Card>
       </div>

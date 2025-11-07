@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
+import Unauthorized from "./pages/Unauthorized";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminFinancial from "./pages/admin/AdminFinancial";
 import AdminAppointmentHistory from "./pages/admin/AdminAppointmentHistory";
@@ -18,6 +19,9 @@ import AdminAccess from "./pages/admin/AdminAccess";
 import AdminServices from "./pages/admin/AdminServices";
 import AdminPartnerships from "./pages/admin/AdminPartnerships";
 import AdminExpenses from "./pages/admin/AdminExpenses";
+import AdminReceivables from "./pages/admin/AdminReceivables";
+import AdminCategories from "./pages/admin/AdminCategories";
+import AdminGroups from "./pages/admin/Groups";
 import SecretaryDashboard from "./pages/secretary/SecretaryDashboard";
 import NewPatient from "./pages/secretary/NewPatient";
 import PatientList from "./pages/secretary/PatientList";
@@ -44,6 +48,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
             
             {/* Admin Routes */}
             <Route path="/admin/dashboard" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminDashboard /></ProtectedRoute>} />
@@ -58,6 +63,9 @@ const App = () => (
             <Route path="/admin/services" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminServices /></ProtectedRoute>} />
             <Route path="/admin/partnerships" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminPartnerships /></ProtectedRoute>} />
             <Route path="/admin/expenses" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminExpenses /></ProtectedRoute>} />
+            <Route path="/admin/receivables" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminReceivables /></ProtectedRoute>} />
+            <Route path="/admin/categories" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminCategories /></ProtectedRoute>} />
+            <Route path="/admin/groups" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminGroups /></ProtectedRoute>} />
             <Route path="/admin/access" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminAccess /></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminSettings /></ProtectedRoute>} />
             

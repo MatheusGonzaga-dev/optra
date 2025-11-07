@@ -1,14 +1,24 @@
 import { ReactNode, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Users, Calendar, FileText, Settings, LogOut, Menu, X, UserPlus, ClipboardList, DollarSign, Clock, UserCog, Package, Handshake, Receipt } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, FileText, Settings, LogOut, Menu, X, UserPlus, ClipboardList, DollarSign, Clock, UserCog, Package, Handshake, Receipt, TrendingUp, Tag, ChevronDown, Wrench, Shield } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import eyeLogo from "@/assets/eye-logo-white.png";
+
 interface DashboardLayoutProps {
   children: ReactNode;
   role: "admin" | "secretary" | "optometrist";
 }
+
+type MenuItem = {
+  icon: LucideIcon;
+  label: string;
+  path?: string;
+  children?: MenuItem[];
+};
+
 const DashboardLayout = ({
   children,
   role
@@ -17,48 +27,82 @@ const DashboardLayout = ({
   const location = useLocation();
   const { signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    Atendimento: true,
+    Cadastros: true,
+    Financeiro: true,
+    Ferramentas: true
+  });
   const roleNames = {
     admin: "Administrador",
     secretary: "Secretaria",
     optometrist: "Optometrista"
   };
-  const menuItems = {
+  const menuItems: Record<DashboardLayoutProps["role"], MenuItem[]> = {
     admin: [{
       icon: LayoutDashboard,
       label: "Dashboard",
       path: "/admin/dashboard"
     }, {
-      icon: Users,
-      label: "Pacientes",
-      path: "/admin/patients"
-    }, {
-      icon: Clock,
-      label: "Fila de Atendimento",
-      path: "/admin/queue"
-    }, {
       icon: ClipboardList,
-      label: "Histórico de Atendimentos",
-      path: "/admin/appointments"
+      label: "Atendimento",
+      children: [{
+        icon: Clock,
+        label: "Fila de Atendimento",
+        path: "/admin/queue"
+      }, {
+        icon: ClipboardList,
+        label: "Histórico de Atendimentos",
+        path: "/admin/appointments"
+      }]
+    }, {
+      icon: UserPlus,
+      label: "Cadastros",
+      children: [{
+        icon: Users,
+        label: "Pacientes",
+        path: "/admin/patients"
+      }, {
+        icon: Handshake,
+        label: "Parcerias",
+        path: "/admin/partnerships"
+      }, {
+        icon: Package,
+        label: "Serviços",
+        path: "/admin/services"
+      }, {
+        icon: Tag,
+        label: "Categorias",
+        path: "/admin/categories"
+      }]
+    }, {
+      icon: DollarSign,
+      label: "Financeiro",
+      children: [{
+        icon: Receipt,
+        label: "Contas a Pagar",
+        path: "/admin/expenses"
+      }, {
+        icon: TrendingUp,
+        label: "Contas a Receber",
+        path: "/admin/receivables"
+      }]
+    }, {
+      icon: Wrench,
+      label: "Ferramentas",
+      children: [{
+        icon: Shield,
+        label: "Grupos",
+        path: "/admin/groups"
+      }, {
+        icon: UserCog,
+        label: "Acessos",
+        path: "/admin/access"
+      }]
     }, {
       icon: FileText,
       label: "Relatórios",
       path: "/admin/reports"
-    }, {
-      icon: Package,
-      label: "Serviços",
-      path: "/admin/services"
-    }, {
-      icon: Handshake,
-      label: "Parcerias",
-      path: "/admin/partnerships"
-    }, {
-      icon: Receipt,
-      label: "Despesas",
-      path: "/admin/expenses"
-    }, {
-      icon: UserCog,
-      label: "Acessos",
-      path: "/admin/access"
     }, {
       icon: Settings,
       label: "Configurações",
@@ -99,6 +143,14 @@ const DashboardLayout = ({
       path: "/optometrist/appointments"
     }]
   };
+
+  const toggleSection = (label: string) => {
+    setOpenSections(prev => ({
+      ...prev,
+      [label]: !prev[label]
+    }));
+  };
+
   const handleLogout = async () => {
     try {
       await signOut();
@@ -140,9 +192,33 @@ const DashboardLayout = ({
         <nav className="p-4 flex-1 overflow-y-auto">
           <ul className="space-y-2">
             {currentMenuItems.map((item, index) => {
-            const isActive = location.pathname === item.path;
+            const isActive = item.path ? location.pathname === item.path : false;
+            if (item.children && item.children.length > 0) {
+              const hasActiveChild = item.children.some(child => child.path && location.pathname === child.path);
+              const isOpen = openSections[item.label] ?? true;
+              return <li key={item.label} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
+                    <button type="button" onClick={() => toggleSection(item.label)} className={`flex w-full items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all duration-300 hover-scale ${hasActiveChild ? "bg-white/20 text-white font-semibold shadow-lg backdrop-blur-sm" : "hover:bg-white/10 text-white/90"}`}>
+                      <div className="flex items-center gap-3">
+                        <item.icon size={20} />
+                        <span>{item.label}</span>
+                      </div>
+                      <ChevronDown size={16} className={`transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`} />
+                    </button>
+                    {isOpen && <ul className="mt-2 space-y-1 pl-8">
+                        {item.children.map(child => {
+                        const childActive = child.path ? location.pathname === child.path : false;
+                        return <li key={child.path}>
+                              <Link to={child.path || "#"} onClick={() => setSidebarOpen(false)} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 hover-scale ${childActive ? "bg-white/20 text-white font-semibold shadow" : "hover:bg-white/10 text-white/90"}`}>
+                                <child.icon size={18} />
+                                <span>{child.label}</span>
+                              </Link>
+                            </li>;
+                      })}
+                      </ul>}
+                  </li>;
+            }
             return <li key={item.path} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
-                  <Link to={item.path} onClick={() => setSidebarOpen(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 hover-scale ${isActive ? "bg-white/20 text-white font-semibold shadow-lg backdrop-blur-sm" : "hover:bg-white/10 text-white/90"}`}>
+                  <Link to={item.path || "#"} onClick={() => setSidebarOpen(false)} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 hover-scale ${isActive ? "bg-white/20 text-white font-semibold shadow-lg backdrop-blur-sm" : "hover:bg-white/10 text-white/90"}`}>
                     <item.icon size={20} />
                     <span>{item.label}</span>
                   </Link>

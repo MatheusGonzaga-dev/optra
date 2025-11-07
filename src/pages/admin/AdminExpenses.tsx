@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, TrendingDown, Filter, Pencil, Trash2 } from "lucide-react";
+import { Plus, TrendingDown, Filter, Pencil, Trash2, Loader2, Receipt, DollarSign, Calendar, CreditCard, AlertCircle, CheckCircle, XCircle, Clock, Building2, User } from "lucide-react";
 import { toast } from "sonner";
 import {
   Select,
@@ -29,48 +29,28 @@ import {
 
 interface Expense {
   id: string;
-  name: string;
-  value: number;
-  date: string;
-  isRecurring: boolean;
-  category: "fixed" | "procedure" | "other";
+  fornecedor: string;
+  descricao: string;
+  categoria_id?: string;
+  subcategoria_id?: string;
+  especie_documento?: "CONTAS_A_PAGAR" | "NOTA_FISCAL" | "FATURA" | "DUPLICATA" | "BOLETO" | "RECIBO" | "NOTA_FISCAL_SERVICO" | "PEDIDO" | "ORDEM_COMPRA" | "OUTROS";
+  numero_documento?: string;
+  valor_original: number;
+  valor_pago: number;
+  valor_desconto: number;
+  valor_juros: number;
+  valor_final?: number; // Calculado automaticamente
+  data_emissao?: string;
+  data_vencimento: string;
+  data_pagamento?: string;
+  forma_pagamento?: "DINHEIRO" | "CARTAO_CREDITO" | "CARTAO_DEBITO" | "PIX" | "BOLETO" | "TRANSFERENCIA";
+  status: "PENDENTE" | "PAGO" | "VENCIDO" | "CANCELADO";
+  observacoes?: string;
 }
 
 const AdminExpenses = () => {
-  const [expenses, setExpenses] = useState<Expense[]>([
-    {
-      id: "1",
-      name: "Aluguel",
-      value: 3500,
-      date: "2024-01-01",
-      isRecurring: true,
-      category: "fixed"
-    },
-    {
-      id: "2",
-      name: "Energia Elétrica",
-      value: 450,
-      date: "2024-01-05",
-      isRecurring: true,
-      category: "fixed"
-    },
-    {
-      id: "3",
-      name: "Material de Exame - Consulta",
-      value: 85,
-      date: "2024-01-10",
-      isRecurring: false,
-      category: "procedure"
-    },
-    {
-      id: "4",
-      name: "Copos Descartáveis",
-      value: 35,
-      date: "2024-01-12",
-      isRecurring: false,
-      category: "other"
-    },
-  ]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -78,23 +58,94 @@ const AdminExpenses = () => {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [filterPeriod, setFilterPeriod] = useState("month");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
-  const handleAddExpense = (expense: Omit<Expense, "id">) => {
-    const newExpense = {
-      ...expense,
-      id: Date.now().toString(),
-    };
-    setExpenses([...expenses, newExpense]);
-    toast.success("Despesa adicionada com sucesso!");
-    setIsAddDialogOpen(false);
+  useEffect(() => {
+    fetchExpenses();
+  }, []);
+
+  const fetchExpenses = async () => {
+    try {
+      setLoading(true);
+      const resp = await fetch('http://localhost:4000/contas-pagar');
+      if (!resp.ok) throw new Error('Erro ao buscar contas a pagar');
+      const data = await resp.json();
+      setExpenses((data || []).map((e: any) => ({
+        id: e.id,
+        fornecedor: e.fornecedor,
+        descricao: e.descricao,
+        categoria_id: e.categoria_id,
+        subcategoria_id: e.subcategoria_id,
+        especie_documento: e.especie_documento,
+        numero_documento: e.numero_documento,
+        valor_original: Number(e.valor_original || 0),
+        valor_pago: Number(e.valor_pago || 0),
+        valor_desconto: Number(e.valor_desconto || 0),
+        valor_juros: Number(e.valor_juros || 0),
+        valor_final: Number(e.valor_final || 0),
+        data_emissao: e.data_emissao,
+        data_vencimento: e.data_vencimento,
+        data_pagamento: e.data_pagamento,
+        forma_pagamento: e.forma_pagamento,
+        status: e.status || 'PENDENTE',
+        observacoes: e.observacoes,
+      })));
+    } catch (error) {
+      console.error('Erro ao buscar contas a pagar:', error);
+      toast.error('Erro ao carregar contas a pagar');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEditExpense = (updatedExpense: Expense) => {
-    setExpenses(expenses.map(e => e.id === updatedExpense.id ? updatedExpense : e));
-    toast.success("Despesa atualizada com sucesso!");
+  const handleAddExpense = async (expense: Omit<Expense, "id">) => {
+    try {
+      const resp = await fetch('http://localhost:4000/contas-pagar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(expense),
+      });
+      if (!resp.ok) {
+        const error = await resp.json();
+        // Criar erro com detalhes para o modal
+        const errorObj: any = new Error('Erro ao adicionar conta a pagar');
+        if (error.detalhes && Array.isArray(error.detalhes)) {
+          errorObj.message = 'Erro de validação';
+          errorObj.detalhes = error.detalhes;
+        } else if (error.error) {
+          errorObj.message = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+        }
+        throw errorObj;
+      }
+      toast.success("Conta a pagar adicionada com sucesso!");
+    setIsAddDialogOpen(false);
+      fetchExpenses();
+    } catch (error: any) {
+      console.error('Erro ao adicionar conta a pagar:', error);
+      toast.error(error.message || 'Erro ao adicionar conta a pagar');
+    }
+  };
+
+  const handleEditExpense = async (updatedExpense: Expense) => {
+    try {
+      const resp = await fetch(`http://localhost:4000/contas-pagar/${updatedExpense.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedExpense),
+      });
+      if (!resp.ok) {
+        const error = await resp.json();
+        throw new Error(error.error || 'Erro ao atualizar conta a pagar');
+      }
+      toast.success("Conta a pagar atualizada com sucesso!");
     setIsEditDialogOpen(false);
+      fetchExpenses();
+    } catch (error: any) {
+      console.error('Erro ao atualizar conta a pagar:', error);
+      toast.error(error.message || 'Erro ao atualizar conta a pagar');
+    }
   };
 
   const handleDeleteClick = (expense: Expense) => {
@@ -102,12 +153,24 @@ const AdminExpenses = () => {
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (selectedExpense) {
-      setExpenses(expenses.filter(e => e.id !== selectedExpense.id));
-      toast.success("Despesa excluída com sucesso!");
+      try {
+        const resp = await fetch(`http://localhost:4000/contas-pagar/${selectedExpense.id}`, {
+          method: 'DELETE',
+        });
+        if (!resp.ok) {
+          const error = await resp.json();
+          throw new Error(error.error || 'Erro ao excluir conta a pagar');
+        }
+        toast.success("Conta a pagar excluída com sucesso!");
       setDeleteDialogOpen(false);
       setSelectedExpense(null);
+        fetchExpenses();
+      } catch (error: any) {
+        console.error('Erro ao excluir conta a pagar:', error);
+        toast.error(error.message || 'Erro ao excluir conta a pagar');
+      }
     }
   };
 
@@ -119,25 +182,32 @@ const AdminExpenses = () => {
   const filterExpenses = () => {
     let filtered = [...expenses];
 
-    // Filter by category
+    // Filter by category (se tiver categoria_id, filtra por isso; senão usa categoria antiga)
     if (filterCategory !== "all") {
-      filtered = filtered.filter(e => e.category === filterCategory);
+      // Por enquanto, vamos manter compatibilidade com categoria antiga se existir
+      // Depois pode ser ajustado para usar categoria_id
+      filtered = filtered; // Mantém todas, pode ser expandido depois
     }
 
-    // Filter by date
+    // Filter by status
+    if (filterStatus !== "all") {
+      filtered = filtered.filter(e => e.status === filterStatus);
+    }
+
+    // Filter by date (vencimento)
     const now = new Date();
     if (filterPeriod === "today") {
       const today = now.toISOString().split('T')[0];
-      filtered = filtered.filter(e => e.date === today);
+      filtered = filtered.filter(e => e.data_vencimento === today);
     } else if (filterPeriod === "week") {
       const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(e => new Date(e.date) >= weekAgo);
+      filtered = filtered.filter(e => new Date(e.data_vencimento) >= weekAgo);
     } else if (filterPeriod === "month") {
       const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      filtered = filtered.filter(e => new Date(e.date) >= monthAgo);
+      filtered = filtered.filter(e => new Date(e.data_vencimento) >= monthAgo);
     } else if (filterPeriod === "custom" && startDate && endDate) {
       filtered = filtered.filter(e => {
-        const expenseDate = new Date(e.date);
+        const expenseDate = new Date(e.data_vencimento);
         return expenseDate >= new Date(startDate) && expenseDate <= new Date(endDate);
       });
     }
@@ -147,9 +217,11 @@ const AdminExpenses = () => {
 
   const filteredExpenses = filterExpenses();
 
-  const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.value, 0);
-  const recurringExpenses = filteredExpenses.filter(e => e.isRecurring).reduce((sum, e) => sum + e.value, 0);
-  const oneTimeExpenses = filteredExpenses.filter(e => !e.isRecurring).reduce((sum, e) => sum + e.value, 0);
+  const totalExpenses = filteredExpenses.reduce((sum, expense) => {
+    return sum + (expense.valor_final || (expense.valor_original + expense.valor_juros - expense.valor_desconto));
+  }, 0);
+  const recurringExpenses = 0; // Removido recorrente por enquanto
+  const oneTimeExpenses = totalExpenses;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -159,77 +231,118 @@ const AdminExpenses = () => {
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return '-';
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR');
   };
 
-  const getCategoryLabel = (category: string) => {
-    const labels = {
-      fixed: "Custo Fixo",
-      procedure: "Procedimento",
-      other: "Outros"
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      PENDENTE: "outline",
+      PAGO: "default",
+      VENCIDO: "destructive",
+      CANCELADO: "secondary"
     };
-    return labels[category as keyof typeof labels] || category;
+    const labels: Record<string, string> = {
+      PENDENTE: "Pendente",
+      PAGO: "Pago",
+      VENCIDO: "Vencido",
+      CANCELADO: "Cancelado"
+    };
+    return { variant: variants[status] || "outline", label: labels[status] || status };
+  };
+
+  const getValorTotal = (expense: Expense) => {
+    return expense.valor_final || (expense.valor_original + expense.valor_juros - expense.valor_desconto);
   };
 
   return (
     <DashboardLayout role="admin">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">Despesas</h1>
-            <p className="text-muted-foreground mt-1">
-              Gerencie todos os custos da clínica
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-primary to-primary/80 rounded-xl shadow-lg">
+              <Receipt className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                Despesas
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Gerencie todos os custos da clínica
+              </p>
+            </div>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
+          <Button 
+            onClick={() => setIsAddDialogOpen(true)}
+            className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg"
+            size="lg"
+          >
+            <Plus className="mr-2 h-5 w-5" />
             Adicionar Despesa
           </Button>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
+        <div className="grid gap-6 md:grid-cols-3">
+          <Card className="border-2 border-red-200 bg-gradient-to-br from-red-50 to-white shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Despesas</CardTitle>
-              <TrendingDown className="h-4 w-4 text-destructive" />
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-red-500" />
+                Total de Despesas
+              </CardTitle>
+              <div className="p-2 bg-red-100 rounded-lg">
+                <TrendingDown className="h-5 w-5 text-red-600" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">
+              <div className="text-3xl font-bold text-red-600 mb-1">
                 {formatCurrency(totalExpenses)}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Receipt className="h-3 w-3" />
                 {filteredExpenses.length} despesa(s) no período
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-white shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Custos Recorrentes</CardTitle>
-              <TrendingDown className="h-4 w-4 text-orange-500" />
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-orange-500" />
+                Custos Recorrentes
+              </CardTitle>
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <TrendingDown className="h-5 w-5 text-orange-600" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-500">
+              <div className="text-3xl font-bold text-orange-600 mb-1">
                 {formatCurrency(recurringExpenses)}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" />
                 Custos fixos mensais
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-2 border-yellow-200 bg-gradient-to-br from-yellow-50 to-white shadow-lg hover:shadow-xl transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Custos Eventuais</CardTitle>
-              <TrendingDown className="h-4 w-4 text-yellow-500" />
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-yellow-500" />
+                Custos Eventuais
+              </CardTitle>
+              <div className="p-2 bg-yellow-100 rounded-lg">
+                <TrendingDown className="h-5 w-5 text-yellow-600" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-500">
+              <div className="text-3xl font-bold text-yellow-600 mb-1">
                 {formatCurrency(oneTimeExpenses)}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Receipt className="h-3 w-3" />
                 Custos não recorrentes
               </p>
             </CardContent>
@@ -237,16 +350,20 @@ const AdminExpenses = () => {
         </div>
 
         {/* Filters */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              <CardTitle>Filtros</CardTitle>
+        <Card className="border-2 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Filter className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-bold">Filtros</CardTitle>
+                <CardDescription className="mt-1">Filtre as despesas por período e categoria</CardDescription>
+              </div>
             </div>
-            <CardDescription>Filtre as despesas por período e categoria</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label>Período</Label>
                 <Select value={filterPeriod} onValueChange={setFilterPeriod}>
@@ -276,6 +393,22 @@ const AdminExpenses = () => {
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="PENDENTE">Pendente</SelectItem>
+                    <SelectItem value="PAGO">Pago</SelectItem>
+                    <SelectItem value="VENCIDO">Vencido</SelectItem>
+                    <SelectItem value="CANCELADO">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {filterPeriod === "custom" && (
@@ -302,68 +435,100 @@ const AdminExpenses = () => {
         </Card>
 
         {/* Expenses List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Lista de Despesas</CardTitle>
-            <CardDescription>
-              {filteredExpenses.length} despesa(s) encontrada(s)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {filteredExpenses.map((expense) => (
-                <div
-                  key={expense.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-medium">{expense.name}</h4>
-                      <Badge variant={expense.isRecurring ? "default" : "secondary"}>
-                        {expense.isRecurring ? "Recorrente" : "Único"}
-                      </Badge>
-                      <Badge variant="outline">
-                        {getCategoryLabel(expense.category)}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {formatDate(expense.date)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-right mr-4">
-                      <p className="text-lg font-bold text-destructive">
-                        {formatCurrency(expense.value)}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEditClick(expense)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteClick(expense)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
+        <Card className="border-2 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-red-500/5 to-red-600/10 border-b">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-500/10 rounded-lg">
+                  <Receipt className="h-5 w-5 text-red-600" />
                 </div>
-              ))}
-
-              {filteredExpenses.length === 0 && (
-                <div className="text-center py-12">
-                  <TrendingDown className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <h3 className="mt-4 text-lg font-semibold">Nenhuma despesa encontrada</h3>
-                  <p className="text-muted-foreground mt-2">
-                    Tente ajustar os filtros ou adicionar uma nova despesa.
-                  </p>
+                <div>
+                  <CardTitle className="text-xl font-bold">Lista de Despesas</CardTitle>
+                  <CardDescription className="mt-1">{filteredExpenses.length} despesa(s) encontrada(s)</CardDescription>
                 </div>
-              )}
+              </div>
             </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="flex items-center justify-center p-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : filteredExpenses.length === 0 ? (
+              <div className="text-center p-12 text-muted-foreground">
+                <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Nenhuma despesa encontrada</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50 border-b">
+                    <tr>
+                      <th className="text-left p-4 font-semibold text-sm">Fornecedor</th>
+                      <th className="text-left p-4 font-semibold text-sm">Descrição</th>
+                      <th className="text-left p-4 font-semibold text-sm">Nº Doc</th>
+                      <th className="text-right p-4 font-semibold text-sm">Valor Original</th>
+                      <th className="text-right p-4 font-semibold text-sm">Valor Pago</th>
+                      <th className="text-left p-4 font-semibold text-sm">Vencimento</th>
+                      <th className="text-left p-4 font-semibold text-sm">Status</th>
+                      <th className="text-right p-4 font-semibold text-sm">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredExpenses.map((expense) => (
+                      <tr key={expense.id} className="border-b hover:bg-muted/30 transition-colors">
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{expense.fornecedor}</span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="max-w-xs truncate">{expense.descricao}</div>
+                        </td>
+                        <td className="p-4 text-sm text-muted-foreground">
+                          {expense.numero_documento || '-'}
+                        </td>
+                        <td className="p-4 text-right font-semibold text-red-600">
+                          {formatCurrency(expense.valor_original)}
+                        </td>
+                        <td className="p-4 text-right font-medium">
+                          {formatCurrency(expense.valor_pago)}
+                        </td>
+                        <td className="p-4 text-sm">
+                          {formatDate(expense.data_vencimento)}
+                        </td>
+                        <td className="p-4">
+                          <Badge variant={getStatusBadge(expense.status).variant}>
+                            {getStatusBadge(expense.status).label}
+                          </Badge>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditClick(expense)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteClick(expense)}
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -388,7 +553,7 @@ const AdminExpenses = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir a despesa "{selectedExpense?.name}"? 
+              Tem certeza que deseja excluir a conta a pagar "{selectedExpense?.fornecedor}"? 
               Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -12,6 +12,7 @@ import { ArrowUp, ArrowDown, Edit2, Search, User, UserPlus, Loader2, Clock, Doll
 import { toast } from "sonner";
 import AddToQueueDialog from "@/components/AddToQueueDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface QueueItem {
@@ -61,14 +62,22 @@ const SecretaryQueue = () => {
   // Verificar se é admin
   const isAdmin = usuario?.perfil === 'ADMINISTRADOR';
 
-  // Carregar fila do backend
+  // Carregar fila do backend (tanto AGUARDANDO quanto EM_ATENDIMENTO)
   const fetchQueue = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:4000/fila');
-      if (!response.ok) throw new Error('Erro ao buscar fila');
-      const data = await response.json();
-      setQueue(data);
+      // Buscar AGUARDANDO
+      const responseAguardando = await fetch('http://localhost:4000/fila?status=AGUARDANDO');
+      // Buscar EM_ATENDIMENTO
+      const responseEmAtendimento = await fetch('http://localhost:4000/fila?status=EM_ATENDIMENTO');
+      
+      if (!responseAguardando.ok || !responseEmAtendimento.ok) throw new Error('Erro ao buscar fila');
+      
+      const dataAguardando = await responseAguardando.json();
+      const dataEmAtendimento = await responseEmAtendimento.json();
+      
+      // Combinar ambos os arrays
+      setQueue([...dataAguardando, ...dataEmAtendimento]);
     } catch (error: any) {
       console.error('Erro ao carregar fila:', error);
       toast.error('Erro ao carregar fila de atendimento');
@@ -84,7 +93,18 @@ const SecretaryQueue = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const filteredQueue = queue.filter(
+  // Separar fila por status
+  const aguardandoQueue = queue.filter(item => item.status === 'AGUARDANDO');
+  const emAtendimentoQueue = queue.filter(item => item.status === 'EM_ATENDIMENTO');
+
+  // Aplicar filtro de busca
+  const filteredAguardando = aguardandoQueue.filter(
+    (item) =>
+      item.pacientes.nome_completo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.pacientes.cpf?.replace(/\D/g, "").includes(searchQuery.replace(/\D/g, "")) || false)
+  );
+  
+  const filteredEmAtendimento = emAtendimentoQueue.filter(
     (item) =>
       item.pacientes.nome_completo.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (item.pacientes.cpf?.replace(/\D/g, "").includes(searchQuery.replace(/\D/g, "")) || false)
@@ -268,7 +288,7 @@ const SecretaryQueue = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
               <h2 className="text-xl font-semibold">
-                {filteredQueue.length} {filteredQueue.length === 1 ? 'paciente' : 'pacientes'} na fila
+                Fila de Atendimento
               </h2>
             </div>
             <div className="relative w-full sm:w-auto">
@@ -287,16 +307,27 @@ const SecretaryQueue = () => {
               <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
               <p className="text-muted-foreground">Carregando fila...</p>
             </div>
-          ) : filteredQueue.length === 0 ? (
+          ) : (
+            <Tabs defaultValue="aguardando" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="aguardando">
+                  Aguardando ({filteredAguardando.length})
+                </TabsTrigger>
+                <TabsTrigger value="em-atendimento">
+                  Em Atendimento ({filteredEmAtendimento.length})
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="aguardando" className="space-y-4">
+                {filteredAguardando.length === 0 ? (
             <div className="text-center py-12">
               <User className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
               <p className="text-muted-foreground">
-                {searchQuery ? "Nenhum paciente encontrado" : "Nenhum paciente na fila no momento"}
+                      {searchQuery ? "Nenhum paciente encontrado" : "Nenhum paciente aguardando"}
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredQueue.map((item, index) => (
+                  filteredAguardando.map((item, index) => (
                 <div
                   key={item.id}
                   className="border rounded-lg bg-white dark:bg-gray-900 overflow-hidden"
@@ -452,8 +483,138 @@ const SecretaryQueue = () => {
                     </div>
                 </div>
               </div>
-            ))}
+                  ))
+                )}
+              </TabsContent>
+
+              <TabsContent value="em-atendimento" className="space-y-4">
+                {filteredEmAtendimento.length === 0 ? (
+                  <div className="text-center py-12">
+                    <User className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+                    <p className="text-muted-foreground">
+                      {searchQuery ? "Nenhum paciente encontrado" : "Nenhum paciente em atendimento no momento"}
+                    </p>
+                  </div>
+                ) : (
+                  filteredEmAtendimento.map((item, index) => (
+                <div
+                  key={item.id}
+                  className="border rounded-lg bg-white dark:bg-gray-900 overflow-hidden"
+                >
+                  {/* Header com Posição e Badge */}
+                  <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 border-b">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center font-bold text-lg">
+                        {item.posicao}
+                  </div>
+                      <div>
+                        <h3 className="font-bold text-lg text-gray-900 dark:text-white">
+                          {item.pacientes.nome_completo}
+                        </h3>
+                        <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                          {item.pacientes.cpf && (
+                            <span className="font-mono">{item.pacientes.cpf}</span>
+                          )}
+                          {item.pacientes.telefone && (
+                            <span>{item.pacientes.telefone}</span>
+                          )}
+                  </div>
+                </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getPrioridadeBadge(item.prioridade)}>
+                        {item.prioridade}
+                      </Badge>
+                      <Badge className="bg-green-600 text-white">
+                        EM ATENDIMENTO
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Conteúdo Principal */}
+                  <div className="p-6 space-y-6">
+                    {/* Seção: Informações do Atendimento */}
+                    <div>
+                      <h4 className="font-semibold text-sm text-gray-500 dark:text-gray-400 mb-3">
+                        INFORMAÇÕES DO ATENDIMENTO
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Tipo</span>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {formatTipoAtendimento(item.tipo_atendimento)}
+                          </p>
+                    </div>
+                    <div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Chegada</span>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {formatTime(item.hora_chegada)}
+                          </p>
+                        </div>
+                        {item.valor_consulta && (
+                          <div>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Valor</span>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              R$ {item.valor_consulta.toFixed(2)}
+                      </p>
+                    </div>
+                        )}
+                        {item.pacientes.convenio && (
+                          <div>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Convênio</span>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {item.pacientes.convenio}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {item.sintomas && (
+                      <div>
+                        <h4 className="font-semibold text-sm text-gray-500 dark:text-gray-400 mb-3">
+                          SINTOMAS
+                        </h4>
+                        <p className="text-sm text-gray-900 dark:text-white">{item.sintomas}</p>
+                      </div>
+                    )}
+                    {item.usa_medicamentos && item.medicamentos_lista && (
+                      <div>
+                        <h4 className="font-semibold text-sm text-gray-500 dark:text-gray-400 mb-3">
+                          MEDICAMENTOS
+                        </h4>
+                        <p className="text-sm text-gray-900 dark:text-white">{item.medicamentos_lista}</p>
+                      </div>
+                    )}
+                    {item.observacoes && (
+                      <div>
+                        <h4 className="font-semibold text-sm text-gray-500 dark:text-gray-400 mb-3">
+                          OBSERVAÇÕES
+                        </h4>
+                        <p className="text-sm text-gray-900 dark:text-white">{item.observacoes}</p>
               </div>
+                    )}
+
+                    {/* Botão de Ações */}
+                    <div className="flex justify-end gap-2 pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          const attendancePath = isAdmin 
+                            ? `/admin/attendance/${item.id}` 
+                            : `/secretary/attendance/${item.id}`;
+                          navigate(attendancePath);
+                        }}
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Abrir Prontuário
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                  ))
+                )}
+              </TabsContent>
+            </Tabs>
             )}
         </Card>
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,39 +32,55 @@ const AdminServices = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   
-  // Mock data - será substituído por dados reais do Supabase
-  const [services, setServices] = useState<Service[]>([
-    {
-      id: "1",
-      name: "Consulta Completa",
-      price: 180.00,
-      cost: 50.00,
-      returnPrice: 80.00,
-      description: "Avaliação oftalmológica completa"
-    },
-    {
-      id: "2",
-      name: "Exame para Lente de Contato",
-      price: 220.00,
-      cost: 60.00,
-      description: "Adaptação e prescrição de lentes de contato"
-    },
-    {
-      id: "3",
-      name: "Refração",
-      price: 150.00,
-      cost: 40.00,
-      description: "Exame de refração para óculos"
-    }
-  ]);
+  const [services, setServices] = useState<Service[]>([]);
 
-  const handleAddService = (service: Omit<Service, "id">) => {
-    const newService = {
-      ...service,
-      id: Date.now().toString()
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const resp = await fetch('http://localhost:4000/servicos');
+        const data = await resp.json();
+        setServices((data || []).map((s: any) => ({
+          id: s.id,
+          name: s.nome,
+          price: Number(s.valor),
+          cost: Number(s.custo),
+          returnPrice: s.valor_retorno ? Number(s.valor_retorno) : undefined,
+          description: s.descricao || undefined,
+        })));
+      } catch (e) {
+        // ignore
+      }
     };
-    setServices([...services, newService]);
-    toast.success("Serviço adicionado com sucesso!");
+    fetchServices();
+  }, []);
+
+  const handleAddService = async (service: Omit<Service, "id">) => {
+    try {
+      const resp = await fetch('http://localhost:4000/servicos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: service.name,
+          valor: service.price,
+          custo: service.cost,
+          valor_retorno: service.returnPrice,
+          descricao: service.description,
+        })
+      });
+      if (!resp.ok) throw new Error();
+      const s = await resp.json();
+      setServices([...services, {
+        id: s.id,
+        name: s.nome,
+        price: Number(s.valor),
+        cost: Number(s.custo),
+        returnPrice: s.valor_retorno ? Number(s.valor_retorno) : undefined,
+        description: s.descricao || undefined,
+      }]);
+      toast.success("Serviço adicionado com sucesso!");
+    } catch {
+      toast.error('Erro ao adicionar serviço');
+    }
   };
 
   const handleEditClick = (service: Service) => {
@@ -72,9 +88,25 @@ const AdminServices = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleEditService = (updatedService: Service) => {
-    setServices(services.map(s => s.id === updatedService.id ? updatedService : s));
-    toast.success("Serviço atualizado com sucesso!");
+  const handleEditService = async (updatedService: Service) => {
+    try {
+      const resp = await fetch(`http://localhost:4000/servicos/${updatedService.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome: updatedService.name,
+          valor: updatedService.price,
+          custo: updatedService.cost,
+          valor_retorno: updatedService.returnPrice,
+          descricao: updatedService.description,
+        })
+      });
+      if (!resp.ok) throw new Error();
+      setServices(services.map(s => s.id === updatedService.id ? updatedService : s));
+      toast.success("Serviço atualizado com sucesso!");
+    } catch {
+      toast.error('Erro ao atualizar serviço');
+    }
   };
 
   const handleDeleteClick = (service: Service) => {
@@ -82,12 +114,17 @@ const AdminServices = () => {
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
-    if (selectedService) {
+  const handleDeleteConfirm = async () => {
+    if (!selectedService) return;
+    try {
+      const resp = await fetch(`http://localhost:4000/servicos/${selectedService.id}`, { method: 'DELETE' });
+      if (!resp.ok) throw new Error();
       setServices(services.filter(s => s.id !== selectedService.id));
       toast.success("Serviço excluído com sucesso!");
       setDeleteDialogOpen(false);
       setSelectedService(null);
+    } catch {
+      toast.error('Erro ao excluir serviço');
     }
   };
 
