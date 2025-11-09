@@ -1,49 +1,110 @@
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import StatCard from "@/components/StatCard";
-import { Users, Calendar, DollarSign, TrendingUp, Clock, CheckCircle, FileText } from "lucide-react";
+import { Users, Calendar, DollarSign, TrendingUp, Clock, CheckCircle, FileText, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
+
+interface DashboardStats {
+  pacientesAtivos: {
+    value: string;
+    description: string;
+    trend: { value: string; positive: boolean };
+  };
+  consultasHoje: {
+    value: string;
+    description: string;
+    trend: { value: string; positive: boolean };
+  };
+  faturamentoMes: {
+    value: string;
+    description: string;
+    trend: { value: string; positive: boolean };
+  };
+  taxaConclusao: {
+    value: string;
+    description: string;
+    trend: { value: string; positive: boolean };
+  };
+}
+
+interface RecentAppointment {
+  patient: string;
+  time: string;
+  status: "completed" | "in-progress" | "waiting";
+  doctor: string;
+}
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  
-  const stats = [
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentAppointments, setRecentAppointments] = useState<RecentAppointment[]>([]);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('http://localhost:4000/dashboard/stats');
+        
+        if (!response.ok) {
+          throw new Error('Erro ao buscar dados do dashboard');
+        }
+
+        const data = await response.json();
+        setStats(data.stats);
+        setRecentAppointments(data.recentAppointments || []);
+      } catch (error: any) {
+        console.error('Erro ao carregar dashboard:', error);
+        toast.error('Erro ao carregar dados do dashboard');
+        
+        // Fallback para dados padrão em caso de erro
+        setStats({
+          pacientesAtivos: { value: "0", description: "Total cadastrado", trend: { value: "0%", positive: true } },
+          consultasHoje: { value: "0", description: "0 em andamento", trend: { value: "0%", positive: true } },
+          faturamentoMes: { value: "R$ 0", description: new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }), trend: { value: "0%", positive: true } },
+          taxaConclusao: { value: "0%", description: "Últimos 30 dias", trend: { value: "0%", positive: true } },
+        });
+        setRecentAppointments([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  const formattedStats = stats ? [
     {
       title: "Pacientes Ativos",
-      value: "1.247",
+      value: stats.pacientesAtivos.value,
       icon: Users,
-      description: "Total cadastrado",
-      trend: { value: "12%", positive: true },
+      description: stats.pacientesAtivos.description,
+      trend: stats.pacientesAtivos.trend,
     },
     {
       title: "Consultas Hoje",
-      value: "28",
+      value: stats.consultasHoje.value,
       icon: Calendar,
-      description: "5 em andamento",
-      trend: { value: "8%", positive: true },
+      description: stats.consultasHoje.description,
+      trend: stats.consultasHoje.trend,
     },
     {
       title: "Faturamento Mês",
-      value: "R$ 45.8k",
+      value: stats.faturamentoMes.value,
       icon: DollarSign,
-      description: "Dezembro 2024",
-      trend: { value: "15%", positive: true },
+      description: stats.faturamentoMes.description,
+      trend: stats.faturamentoMes.trend,
     },
     {
       title: "Taxa de Conclusão",
-      value: "94%",
+      value: stats.taxaConclusao.value,
       icon: TrendingUp,
-      description: "Últimos 30 dias",
-      trend: { value: "3%", positive: true },
+      description: stats.taxaConclusao.description,
+      trend: stats.taxaConclusao.trend,
     },
-  ];
-
-  const recentAppointments = [
-    { patient: "Maria Silva", time: "09:00", status: "completed", doctor: "Dr. João" },
-    { patient: "José Santos", time: "10:30", status: "in-progress", doctor: "Dra. Ana" },
-    { patient: "Ana Costa", time: "11:00", status: "waiting", doctor: "Dr. João" },
-    { patient: "Pedro Lima", time: "14:00", status: "waiting", doctor: "Dra. Ana" },
-  ];
+  ] : [];
 
   const statusColors = {
     completed: "text-success",
@@ -57,6 +118,19 @@ const AdminDashboard = () => {
     waiting: "Aguardando",
   };
 
+  if (loading) {
+    return (
+      <DashboardLayout role="admin">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-muted-foreground">Carregando dados do dashboard...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout role="admin">
       <div className="space-y-8">
@@ -68,7 +142,7 @@ const AdminDashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat) => (
+          {formattedStats.map((stat) => (
             <StatCard key={stat.title} {...stat} />
           ))}
         </div>
@@ -137,7 +211,12 @@ const AdminDashboard = () => {
               <Clock className="w-5 h-5 text-muted-foreground" />
             </div>
             <div className="space-y-4">
-              {recentAppointments.map((appointment, index) => (
+              {recentAppointments.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhum atendimento recente
+                </p>
+              ) : (
+                recentAppointments.map((appointment, index) => (
                 <div
                   key={index}
                   className="flex items-center justify-between p-4 rounded-lg bg-accent/50 hover:bg-accent transition-colors"
@@ -145,8 +224,8 @@ const AdminDashboard = () => {
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                       <span className="text-sm font-semibold text-primary">
-                        {appointment.patient.split(" ")[0][0]}
-                        {appointment.patient.split(" ")[1][0]}
+                        {appointment.patient.split(" ")[0]?.[0] || ''}
+                        {appointment.patient.split(" ")[1]?.[0] || ''}
                       </span>
                     </div>
                     <div>
@@ -167,7 +246,8 @@ const AdminDashboard = () => {
                     </p>
                   </div>
                 </div>
-              ))}
+                ))
+              )}
             </div>
           </Card>
 

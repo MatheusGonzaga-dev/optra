@@ -31,7 +31,8 @@ const DashboardLayout = ({
     Atendimento: true,
     Cadastros: true,
     Financeiro: true,
-    Ferramentas: true
+    Ferramentas: true,
+    Relatórios: true
   });
   const roleNames = {
     admin: "Administrador",
@@ -102,7 +103,15 @@ const DashboardLayout = ({
     }, {
       icon: FileText,
       label: "Relatórios",
-      path: "/admin/reports"
+      children: [{
+        icon: FileText,
+        label: "Visão Geral",
+        path: "/admin/reports"
+      }, {
+        icon: Handshake,
+        label: "Parcerias",
+        path: "/admin/reports?tab=parcerias"
+      }]
     }, {
       icon: Settings,
       label: "Configurações",
@@ -163,6 +172,14 @@ const DashboardLayout = ({
     }
   };
   const currentMenuItems = menuItems[role];
+  const isRouteActive = (target?: string) => {
+    if (!target) return false;
+    const [path, search] = target.split("?");
+    if (search !== undefined) {
+      return location.pathname === path && location.search === `?${search}`;
+    }
+    return location.pathname === path;
+  };
   return <div className="min-h-screen w-full bg-background">
       {/* Mobile Header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-gradient-to-r from-blue-500 to-blue-600 border-b border-blue-700 z-40 flex items-center justify-between px-4">
@@ -178,7 +195,7 @@ const DashboardLayout = ({
       </header>
 
       {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 h-full w-64 bg-gradient-to-b from-blue-500 via-blue-600 to-blue-700 text-white z-50 transition-transform duration-300 shadow-2xl ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
+      <aside className={`fixed top-0 left-0 h-full w-64 bg-gradient-to-b from-blue-500 via-blue-600 to-blue-700 text-white z-50 transition-transform duration-300 shadow-2xl ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 flex flex-col`}>
         <div className="p-6 border-b border-white/20 bg-gradient-to-r from-blue-600 to-blue-500">
           <div className="flex items-center gap-3 mb-2 animate-fade-in">
             <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center p-2 shadow-lg animate-pulse">
@@ -189,12 +206,12 @@ const DashboardLayout = ({
           <p className="text-sm text-white/90 mt-2 font-medium">{roleNames[role]}</p>
         </div>
 
-        <nav className="p-4 flex-1 overflow-y-auto">
+        <nav className="p-4 flex-1 overflow-y-auto hide-scrollbar">
           <ul className="space-y-2">
             {currentMenuItems.map((item, index) => {
-            const isActive = item.path ? location.pathname === item.path : false;
+            const isActive = item.path ? isRouteActive(item.path) : false;
             if (item.children && item.children.length > 0) {
-              const hasActiveChild = item.children.some(child => child.path && location.pathname === child.path);
+              const hasActiveChild = item.children.some(child => child.path && isRouteActive(child.path));
               const isOpen = openSections[item.label] ?? true;
               return <li key={item.label} className="animate-fade-in" style={{ animationDelay: `${index * 50}ms` }}>
                     <button type="button" onClick={() => toggleSection(item.label)} className={`flex w-full items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all duration-300 hover-scale ${hasActiveChild ? "bg-white/20 text-white font-semibold shadow-lg backdrop-blur-sm" : "hover:bg-white/10 text-white/90"}`}>
@@ -206,7 +223,7 @@ const DashboardLayout = ({
                     </button>
                     {isOpen && <ul className="mt-2 space-y-1 pl-8">
                         {item.children.map(child => {
-                        const childActive = child.path ? location.pathname === child.path : false;
+                        const childActive = child.path ? isRouteActive(child.path) : false;
                         return <li key={child.path}>
                               <Link to={child.path || "#"} onClick={() => setSidebarOpen(false)} className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 hover-scale ${childActive ? "bg-white/20 text-white font-semibold shadow" : "hover:bg-white/10 text-white/90"}`}>
                                 <child.icon size={18} />

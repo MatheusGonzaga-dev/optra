@@ -1,14 +1,80 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { useEffect, useMemo, useState } from "react";
-import { TrendingUp, Users, DollarSign, Calendar, Download, BarChart3 } from "lucide-react";
+import { TrendingUp, Users, DollarSign, Calendar, Download, BarChart3, Loader2, SlidersHorizontal } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
+import { useSearchParams } from "react-router-dom";
+
+type PartnershipAttendance = {
+  id: string;
+  data: string;
+  total: number;
+  servico: string;
+  paciente: string;
+  profissional: string | null;
+  tipo_atendimento: string | null;
+  status: string | null;
+};
+
+type PartnershipReportItem = {
+  id: string;
+  nome: string;
+  cnpj_cpf?: string | null;
+  telefone?: string | null;
+  data_parceria?: string | null;
+  totalAtendimentos: number;
+  totalReceita: number;
+  ticketMedio: number;
+  ultimoAtendimento: string | null;
+  atendimentosRecentes: PartnershipAttendance[];
+};
+
+type PartnershipReportResponse = {
+  resumo: {
+    totalParceriasAtivas: number;
+    totalAtendimentos: number;
+    totalReceita: number;
+  };
+  parcerias: PartnershipReportItem[];
+};
 
 const AdminReports = () => {
+  const [searchParams] = useSearchParams();
+  const isPartnershipView = searchParams.get("tab") === "parcerias";
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [partnershipReport, setPartnershipReport] = useState<PartnershipReportResponse | null>(null);
+  const [loadingPartnerships, setLoadingPartnerships] = useState<boolean>(true);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    partnerName: "",
+    minAttendances: "",
+    withRevenue: false,
+    withAttendances: false,
+  });
+
+  const formatCurrency = (value: number | null | undefined) =>
+    (value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+  const formatDateTime = (value: string | null | undefined) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -23,6 +89,27 @@ const AdminReports = () => {
       }
     };
     load();
+  }, []);
+
+  useEffect(() => {
+    const loadPartnershipReport = async () => {
+      try {
+        const response = await fetch('http://localhost:4000/parcerias/relatorio');
+        if (!response.ok) {
+          throw new Error('Erro ao carregar relatório de parcerias');
+        }
+        const data = await response.json();
+        setPartnershipReport(data);
+      } catch (error) {
+        console.error('Erro ao carregar relatório de parcerias:', error);
+        toast.error('Erro ao carregar relatório de parcerias');
+        setPartnershipReport(null);
+      } finally {
+        setLoadingPartnerships(false);
+      }
+    };
+
+    loadPartnershipReport();
   }, []);
 
   // Estatísticas gerais a partir do backend
@@ -102,27 +189,310 @@ const AdminReports = () => {
     return order.map(idx => ({ dia: days[idx], quantidade: counts[idx] || 0 }));
   }, [records]);
 
+  const partnershipSummary = partnershipReport?.parcerias ?? [];
+
+  const filteredPartnershipSummary = useMemo(() => {
+    const { partnerName, minAttendances, withRevenue, withAttendances } = filters;
+    const minAttendancesNumber = Number(minAttendances);
+    return partnershipSummary.filter((item) => {
+      const nameMatch = partnerName
+        ? item.nome.toLowerCase().includes(partnerName.toLowerCase()) ||
+          item.cnpj_cpf?.toLowerCase().includes(partnerName.toLowerCase()) ||
+          item.telefone?.includes(partnerName)
+        : true;
+
+      const attendancesMatch = Number.isNaN(minAttendancesNumber)
+        ? true
+        : item.totalAtendimentos >= minAttendancesNumber;
+
+      const revenueMatch = withRevenue ? Number(item.totalReceita) > 0 : true;
+      const hasAttendancesMatch = withAttendances ? item.totalAtendimentos > 0 : true;
+
+      return nameMatch && attendancesMatch && revenueMatch && hasAttendancesMatch;
+    });
+  }, [filters, partnershipSummary]);
+
+  const filteredTotals = useMemo(() => {
+    const totalParceriasAtivas = filteredPartnershipSummary.length;
+    const totalAtendimentos = filteredPartnershipSummary.reduce(
+      (sum, item) => sum + Number(item.totalAtendimentos || 0),
+      0
+    );
+    const totalReceita = filteredPartnershipSummary.reduce(
+      (sum, item) => sum + Number(item.totalReceita || 0),
+      0
+    );
+
+    return {
+      totalParceriasAtivas,
+      totalAtendimentos,
+      totalReceita,
+    };
+  }, [filteredPartnershipSummary]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.partnerName.trim()) count += 1;
+    if (filters.minAttendances.trim()) count += 1;
+    if (filters.withRevenue) count += 1;
+    if (filters.withAttendances) count += 1;
+    return count;
+  }, [filters]);
+
   const handleExportReport = (reportType: string) => {
     toast.success(`Relatório de ${reportType} exportado com sucesso!`);
+  };
+
+  const handleFilterChange = (field: keyof typeof filters, value: string | boolean) => {
+    setFilters((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      partnerName: "",
+      minAttendances: "",
+      withRevenue: false,
+      withAttendances: false,
+    });
   };
 
   return (
     <DashboardLayout role="admin">
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Relatórios e Análises</h1>
-            <p className="text-muted-foreground mt-1">Análises completas de desempenho e produtividade</p>
-          </div>
-          <Button onClick={() => handleExportReport("geral")}>
-            <Download className="w-4 h-4 mr-2" />
-            Exportar Relatório Geral
-          </Button>
-        </div>
+        {isPartnershipView ? (
+          <>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-foreground">Relatórios de Parcerias</h1>
+                <p className="text-muted-foreground mt-1">
+                  Acompanhe o desempenho das parcerias e o volume financeiro gerado
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <SlidersHorizontal className="h-4 w-4" />
+                      Filtros
+                      {activeFilterCount > 0 && (
+                        <Badge variant="secondary" className="ml-1">
+                          {activeFilterCount}
+                        </Badge>
+                      )}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-full sm:max-w-md">
+                    <SheetHeader>
+                      <SheetTitle>Filtrar Parcerias</SheetTitle>
+                      <SheetDescription>
+                        Refinar os resultados do relatório aplicando filtros específicos.
+                      </SheetDescription>
+                    </SheetHeader>
+                    <div className="flex flex-col gap-6 py-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="filter-partner">Nome, documento ou telefone</Label>
+                        <Input
+                          id="filter-partner"
+                          value={filters.partnerName}
+                          onChange={(event) => handleFilterChange("partnerName", event.target.value)}
+                          placeholder="Ex.: Clínica XYZ ou 00.000.000/0000-00"
+                        />
+                      </div>
 
-        {/* Cards de resumo executivo */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="filter-min-attendances">Número mínimo de atendimentos</Label>
+                        <Input
+                          id="filter-min-attendances"
+                          type="number"
+                          min={0}
+                          value={filters.minAttendances}
+                          onChange={(event) => handleFilterChange("minAttendances", event.target.value)}
+                          placeholder="Ex.: 5"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between space-x-2">
+                        <Label htmlFor="filter-with-attendances" className="font-medium">
+                          Apenas parcerias com atendimentos
+                        </Label>
+                        <Switch
+                          id="filter-with-attendances"
+                          checked={filters.withAttendances}
+                          onCheckedChange={(checked) => handleFilterChange("withAttendances", checked)}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between space-x-2">
+                        <Label htmlFor="filter-with-revenue" className="font-medium">
+                          Apenas parcerias com receita
+                        </Label>
+                        <Switch
+                          id="filter-with-revenue"
+                          checked={filters.withRevenue}
+                          onCheckedChange={(checked) => handleFilterChange("withRevenue", checked)}
+                        />
+                      </div>
+                    </div>
+                    <SheetFooter className="flex flex-row justify-between gap-2">
+                      <Button variant="ghost" onClick={handleClearFilters} className="flex-1">
+                        Limpar filtros
+                      </Button>
+                      <Button onClick={() => setFilterOpen(false)} className="flex-1">
+                        Aplicar filtros
+                      </Button>
+                    </SheetFooter>
+                  </SheetContent>
+                </Sheet>
+                <Button variant="outline" onClick={() => handleExportReport("parcerias")}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportar Relatório de Parcerias
+                </Button>
+              </div>
+            </div>
+
+            <Card className="p-6">
+              <p className="text-sm text-muted-foreground mb-6">
+                Dados consolidados das ordens de serviço vinculadas às parcerias comerciais.
+              </p>
+
+              {loadingPartnerships ? (
+                <div className="flex items-center justify-center h-40">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              ) : partnershipSummary.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  Nenhum atendimento vinculado a parcerias encontrado.
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="rounded-lg border p-4 bg-muted/30">
+                      <p className="text-sm text-muted-foreground">Parcerias ativas</p>
+                      <p className="text-2xl font-semibold mt-2">
+                        {filteredTotals.totalParceriasAtivas}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border p-4 bg-muted/30">
+                      <p className="text-sm text-muted-foreground">Atendimentos vinculados</p>
+                      <p className="text-2xl font-semibold mt-2">
+                        {filteredTotals.totalAtendimentos}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border p-4 bg-muted/30">
+                      <p className="text-sm text-muted-foreground">Receita gerada</p>
+                      <p className="text-2xl font-semibold mt-2">
+                        {formatCurrency(filteredTotals.totalReceita)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-medium">Parceria</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium">Contato</th>
+                          <th className="px-4 py-3 text-center text-sm font-medium">Atendimentos</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium">Receita</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium">Ticket Médio</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium">Último Atendimento</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {filteredPartnershipSummary.map((item) => (
+                          <tr key={item.id} className="hover:bg-muted/50">
+                            <td className="px-4 py-3">
+                              <div className="flex flex-col">
+                                <span className="font-medium">{item.nome}</span>
+                                {item.cnpj_cpf && (
+                                  <span className="text-xs text-muted-foreground">{item.cnpj_cpf}</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-muted-foreground">
+                              {item.telefone || "-"}
+                            </td>
+                            <td className="px-4 py-3 text-center text-sm font-semibold text-foreground">
+                              {item.totalAtendimentos}
+                            </td>
+                            <td className="px-4 py-3 text-right text-sm font-semibold text-success">
+                              {formatCurrency(item.totalReceita)}
+                            </td>
+                            <td className="px-4 py-3 text-right text-sm">
+                              {formatCurrency(item.ticketMedio)}
+                            </td>
+                            <td className="px-4 py-3 text-right text-sm">
+                              {formatDateTime(item.ultimoAtendimento)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="mt-6 space-y-4">
+                    {filteredPartnershipSummary.map((item) => (
+                      <div key={`${item.id}-recent`} className="rounded-lg border p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-semibold text-base">
+                            Últimos atendimentos — {item.nome}
+                          </h4>
+                          <span className="text-sm text-muted-foreground">
+                            {item.totalAtendimentos} atendimentos • Receita {formatCurrency(item.totalReceita)}
+                          </span>
+                        </div>
+                        {item.atendimentosRecentes.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">
+                            Nenhum atendimento registrado para esta parceria.
+                          </p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {item.atendimentosRecentes.map((attendance) => (
+                              <li
+                                key={attendance.id}
+                                className="flex flex-col md:flex-row md:items-center md:justify-between rounded-md bg-muted/30 px-3 py-2"
+                              >
+                                <div>
+                                  <p className="font-medium text-sm">
+                                    {attendance.paciente} • {attendance.servico}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {attendance.profissional ? `${attendance.profissional} • ` : ""}
+                                    {attendance.tipo_atendimento ? `${attendance.tipo_atendimento} • ` : ""}
+                                    {formatDateTime(attendance.data)}
+                                  </p>
+                                </div>
+                                <span className="text-sm font-semibold text-success mt-2 md:mt-0">
+                                  {formatCurrency(attendance.total)}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </Card>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-foreground">Relatórios e Análises</h1>
+                <p className="text-muted-foreground mt-1">Análises completas de desempenho e produtividade</p>
+              </div>
+              <Button onClick={() => handleExportReport("geral")}>
+                <Download className="w-4 h-4 mr-2" />
+                Exportar Relatório Geral
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card className="p-6">
             <div className="flex items-start justify-between">
               <div>
@@ -396,6 +766,8 @@ const AdminReports = () => {
             </BarChart>
           </ResponsiveContainer>
         </Card>
+      </>
+        )}
       </div>
     </DashboardLayout>
   );
