@@ -115,7 +115,10 @@ export default function Groups() {
       );
       if (!response.ok) throw new Error("Erro ao buscar permissões do grupo");
       const data = await response.json();
-      setGroupPermissions(data.map((p: any) => p.permissao_id));
+      // data já retorna array de permissões com id
+      const permissionIds = data.map((p: any) => p.id);
+      setGroupPermissions(permissionIds);
+      console.log('Permissões carregadas do grupo:', permissionIds);
     } catch (error) {
       console.error("Erro:", error);
       toast.error("Erro ao carregar permissões do grupo");
@@ -216,52 +219,46 @@ export default function Groups() {
     setIsPermissionsDialogOpen(true);
   };
 
-  const handleTogglePermission = async (permissionId: string) => {
+  const handleTogglePermission = (permissionId: string) => {
     if (!selectedGroup) return;
 
     const hasPermission = groupPermissions.includes(permissionId);
 
+    if (hasPermission) {
+      // Remover permissão do estado local
+      setGroupPermissions(groupPermissions.filter((id) => id !== permissionId));
+    } else {
+      // Adicionar permissão ao estado local
+      setGroupPermissions([...groupPermissions, permissionId]);
+    }
+  };
+
+  const handleSavePermissions = async () => {
+    if (!selectedGroup) return;
+
+    setLoading(true);
     try {
-      if (hasPermission) {
-        // Remover permissão
-        const response = await fetch(
-          `${API_BASE_URL}/grupos/grupo-permissoes`,
-          {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              grupo_id: selectedGroup.id,
-              permissao_id: permissionId,
-            }),
-          }
-        );
-
-        if (!response.ok) throw new Error("Erro ao remover permissão");
-        setGroupPermissions(groupPermissions.filter((id) => id !== permissionId));
-      } else {
-        // Adicionar permissão
-        const response = await fetch(
-          `${API_BASE_URL}/grupos/grupo-permissoes`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              grupo_id: selectedGroup.id,
-              permissao_id: permissionId,
-            }),
-          }
-        );
-
-        if (!response.ok) throw new Error("Erro ao adicionar permissão");
-        setGroupPermissions([...groupPermissions, permissionId]);
-      }
-
-      toast.success(
-        hasPermission ? "Permissão removida" : "Permissão adicionada"
+      const response = await fetch(
+        `${API_BASE_URL}/grupos/${selectedGroup.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            permissoes: groupPermissions,
+          }),
+        }
       );
+
+      if (!response.ok) throw new Error("Erro ao salvar permissões");
+
+      toast.success("Permissões salvas com sucesso");
+      setIsPermissionsDialogOpen(false);
+      fetchGroups();
     } catch (error) {
       console.error("Erro:", error);
-      toast.error("Erro ao atualizar permissão");
+      toast.error("Erro ao salvar permissões");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -271,7 +268,7 @@ export default function Groups() {
       toast.error("Permissão não encontrada no sistema");
       return;
     }
-    void handleTogglePermission(permissionId);
+    handleTogglePermission(permissionId);
   };
 
   const isPermissionChecked = (permissionCode?: string) => {
@@ -598,6 +595,21 @@ export default function Groups() {
                   `permissoes_iniciais.sql` para popular as permissões padrões.
                 </p>
               )}
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsPermissionsDialogOpen(false)}
+                  disabled={loading}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSavePermissions}
+                  disabled={loading}
+                >
+                  {loading ? "Salvando..." : "Salvar Permissões"}
+                </Button>
+              </div>
             </div>
           </DialogContent>
         </Dialog>

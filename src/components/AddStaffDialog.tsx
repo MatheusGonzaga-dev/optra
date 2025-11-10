@@ -11,13 +11,15 @@ import { toast } from "sonner";
 interface AddStaffDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAdd: (staff: {
+  onAdd?: (staff?: {
     name: string;
     email: string;
     cpf: string;
     phone: string;
     address: string;
     role: "secretary" | "optometrist";
+    groupId?: string;
+    groupName?: string;
   }) => void;
 }
 
@@ -104,8 +106,18 @@ const AddStaffDialog = ({ open, onOpenChange, onAdd }: AddStaffDialogProps) => {
         email: formData.email,
         senha: formData.password,
         perfil: perfilMap[formData.role],
-        telefone: formData.phone,
-        cpf: formData.cpf,
+        telefone: formData.phone || null,
+        cpf: formData.cpf || null,
+        rg: formData.rg || null,
+        data_nascimento: formData.dataNascimento || null,
+        estado_civil: formData.estadoCivil || null,
+        endereco: formData.address || null,
+        cep: formData.cep || null,
+        cidade: formData.cidade || null,
+        estado: formData.estado || null,
+        data_admissao: formData.dataAdmissao || null,
+        cargo: formData.cargo || null,
+        salario: formData.salario ? Number(formData.salario) : null,
       };
 
       // Adicionar grupo de acesso se selecionado
@@ -134,13 +146,15 @@ const AddStaffDialog = ({ open, onOpenChange, onAdd }: AddStaffDialogProps) => {
 
       toast.success('Funcionário cadastrado com sucesso!');
       
-      onAdd({
+      onAdd?.({
         name: formData.name,
         email: formData.email,
         cpf: formData.cpf,
         phone: formData.phone,
         address: formData.address,
-        role: formData.role
+        role: formData.role,
+        groupId: formData.grupoAcessoId || undefined,
+        groupName: formData.grupoAcessoId ? groups.find(g => g.id === formData.grupoAcessoId)?.nome : undefined,
       });
       
       // Resetar formulário
@@ -163,6 +177,7 @@ const AddStaffDialog = ({ open, onOpenChange, onAdd }: AddStaffDialogProps) => {
         estadoCrm: "",
         email: "",
         password: "",
+        grupoAcessoId: "",
       });
       onOpenChange(false);
     } catch (error: any) {
@@ -467,16 +482,19 @@ const AddStaffDialog = ({ open, onOpenChange, onAdd }: AddStaffDialogProps) => {
               <div className="space-y-2">
                 <Label htmlFor="grupoAcesso">Grupo de Permissões (Opcional)</Label>
                 <Select
-                  value={formData.grupoAcessoId}
-                  onValueChange={(value) => 
-                    setFormData({ ...formData, grupoAcessoId: value })
+                  value={formData.grupoAcessoId || "none"}
+                  onValueChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      grupoAcessoId: value === "none" ? "" : value,
+                    })
                   }
                 >
                   <SelectTrigger id="grupoAcesso">
                     <SelectValue placeholder="Selecione um grupo ou deixe vazio" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum (usar permissões padrão)</SelectItem>
+                    <SelectItem value="none">Nenhum (usar permissões padrão)</SelectItem>
                     {groups.map((group) => (
                       <SelectItem key={group.id} value={group.id}>
                         <div className="flex flex-col items-start">

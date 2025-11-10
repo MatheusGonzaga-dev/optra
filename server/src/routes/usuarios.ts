@@ -6,7 +6,27 @@ export const router = Router();
 // Criar novo usuário
 router.post('/', async (req, res) => {
   try {
-    const { nome_completo, email, senha, perfil, telefone, crm, estado_crm } = req.body;
+    const {
+      nome_completo,
+      email,
+      senha,
+      perfil,
+      telefone,
+      crm,
+      estado_crm,
+      cpf,
+      rg,
+      data_nascimento,
+      estado_civil,
+      endereco,
+      cep,
+      cidade,
+      estado,
+      data_admissao,
+      cargo,
+      salario,
+      grupo_acesso_id,
+    } = req.body;
 
     // Validação básica
     if (!nome_completo || !email || !senha || !perfil) {
@@ -65,9 +85,21 @@ router.post('/', async (req, res) => {
         senha_hash: '', // A senha é gerenciada pelo Supabase Auth
         perfil,
         telefone: telefone || null,
+        cpf: cpf || null,
+        rg: rg || null,
+        data_nascimento: data_nascimento || null,
+        estado_civil: estado_civil || null,
+        endereco: endereco || null,
+        cep: cep || null,
+        cidade: cidade || null,
+        estado: estado || null,
+        data_admissao: data_admissao || null,
+        cargo: cargo || null,
+        salario: salario !== undefined && salario !== null ? Number(salario) : null,
         crm: crm || null,
         estado_crm: estado_crm || null,
-        ativo: true
+        ativo: true,
+        grupo_acesso_id: grupo_acesso_id || null,
       })
       .select()
       .single();
@@ -157,7 +189,27 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { nome_completo, email, perfil, telefone, crm, estado_crm, ativo } = req.body;
+    const {
+      nome_completo,
+      email,
+      perfil,
+      telefone,
+      crm,
+      estado_crm,
+      ativo,
+      grupo_acesso_id,
+      cpf,
+      rg,
+      data_nascimento,
+      estado_civil,
+      endereco,
+      cep,
+      cidade,
+      estado,
+      data_admissao,
+      cargo,
+      salario,
+    } = req.body;
 
     const updateData: any = {};
     if (nome_completo) updateData.nome_completo = nome_completo;
@@ -167,6 +219,18 @@ router.put('/:id', async (req, res) => {
     if (crm !== undefined) updateData.crm = crm;
     if (estado_crm !== undefined) updateData.estado_crm = estado_crm;
     if (ativo !== undefined) updateData.ativo = ativo;
+    if (grupo_acesso_id !== undefined) updateData.grupo_acesso_id = grupo_acesso_id || null;
+    if (cpf !== undefined) updateData.cpf = cpf;
+    if (rg !== undefined) updateData.rg = rg;
+    if (data_nascimento !== undefined) updateData.data_nascimento = data_nascimento;
+    if (estado_civil !== undefined) updateData.estado_civil = estado_civil;
+    if (endereco !== undefined) updateData.endereco = endereco;
+    if (cep !== undefined) updateData.cep = cep;
+    if (cidade !== undefined) updateData.cidade = cidade;
+    if (estado !== undefined) updateData.estado = estado;
+    if (data_admissao !== undefined) updateData.data_admissao = data_admissao;
+    if (cargo !== undefined) updateData.cargo = cargo;
+    if (salario !== undefined) updateData.salario = salario !== null ? Number(salario) : null;
     
     updateData.atualizado_em = new Date().toISOString();
 

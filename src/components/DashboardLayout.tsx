@@ -137,36 +137,44 @@ const DashboardLayout = ({
     secretary: [{
       icon: LayoutDashboard,
       label: "Dashboard",
-      path: "/secretary/dashboard"
+      path: "/secretary/dashboard",
+      permission: "dashboard.view"
     }, {
       icon: Users,
       label: "Pacientes",
-      path: "/secretary/patients"
+      path: "/secretary/patients",
+      permission: "pacientes.view"
     }, {
       icon: Calendar,
       label: "Agenda",
-      path: "/secretary/schedule"
+      path: "/secretary/schedule",
+      permission: "agenda.view"
     }, {
       icon: Clock,
       label: "Fila",
-      path: "/secretary/queue"
+      path: "/secretary/queue",
+      permission: "fila.view"
     }],
     optometrist: [{
       icon: LayoutDashboard,
       label: "Dashboard",
-      path: "/optometrist/dashboard"
+      path: "/optometrist/dashboard",
+      permission: "dashboard.view"
     }, {
       icon: Clock,
       label: "Fila de Atendimento",
-      path: "/optometrist/queue"
+      path: "/optometrist/queue",
+      permission: "fila.view"
     }, {
       icon: Calendar,
       label: "Agenda",
-      path: "/optometrist/schedule"
+      path: "/optometrist/schedule",
+      permission: "agenda.view"
     }, {
       icon: ClipboardList,
       label: "Atendimentos",
-      path: "/optometrist/appointments"
+      path: "/optometrist/appointments",
+      permission: "atendimentos.view"
     }]
   };
 
