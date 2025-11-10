@@ -196,3 +196,4 @@ export const actionColumns: Array<{ key: PermissionActionKey; label: string }> =
   { key: 'export', label: 'Exportar' },
 ];
 
+

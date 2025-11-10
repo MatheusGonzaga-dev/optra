@@ -2,12 +2,13 @@ import DashboardLayout from "@/components/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { useEffect, useMemo, useState } from "react";
-import { TrendingUp, Users, DollarSign, Calendar, Download, BarChart3, Loader2, SlidersHorizontal } from "lucide-react";
+import { TrendingUp, Users, DollarSign, Calendar, Download, BarChart3, Loader2, SlidersHorizontal, ChevronDown, XCircle } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
@@ -54,11 +55,14 @@ const AdminReports = () => {
   const [loadingPartnerships, setLoadingPartnerships] = useState<boolean>(true);
   const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState({
-    partnerName: "",
-    minAttendances: "",
+    partnerId: "",
     withRevenue: false,
     withAttendances: false,
   });
+  const [partnerSelectOpen, setPartnerSelectOpen] = useState(false);
+
+  const sanitizeDigits = (value: string | null | undefined) =>
+    (value ?? "").replace(/\D/g, "");
 
   const formatCurrency = (value: number | null | undefined) =>
     (value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -192,25 +196,19 @@ const AdminReports = () => {
   const partnershipSummary = partnershipReport?.parcerias ?? [];
 
   const filteredPartnershipSummary = useMemo(() => {
-    const { partnerName, minAttendances, withRevenue, withAttendances } = filters;
-    const minAttendancesNumber = Number(minAttendances);
+    const { partnerId, withRevenue, withAttendances } = filters;
     return partnershipSummary.filter((item) => {
-      const nameMatch = partnerName
-        ? item.nome.toLowerCase().includes(partnerName.toLowerCase()) ||
-          item.cnpj_cpf?.toLowerCase().includes(partnerName.toLowerCase()) ||
-          item.telefone?.includes(partnerName)
-        : true;
-
-      const attendancesMatch = Number.isNaN(minAttendancesNumber)
-        ? true
-        : item.totalAtendimentos >= minAttendancesNumber;
-
+      const partnerMatch = partnerId ? item.id === partnerId : true;
+      const attendancesMatch = withAttendances ? item.totalAtendimentos > 0 : true;
       const revenueMatch = withRevenue ? Number(item.totalReceita) > 0 : true;
-      const hasAttendancesMatch = withAttendances ? item.totalAtendimentos > 0 : true;
-
-      return nameMatch && attendancesMatch && revenueMatch && hasAttendancesMatch;
+      return partnerMatch && attendancesMatch && revenueMatch;
     });
   }, [filters, partnershipSummary]);
+
+  const selectedPartner = useMemo(
+    () => partnershipSummary.find((item) => item.id === filters.partnerId),
+    [filters.partnerId, partnershipSummary],
+  );
 
   const filteredTotals = useMemo(() => {
     const totalParceriasAtivas = filteredPartnershipSummary.length;
@@ -232,8 +230,7 @@ const AdminReports = () => {
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
-    if (filters.partnerName.trim()) count += 1;
-    if (filters.minAttendances.trim()) count += 1;
+  if (filters.partnerId) count += 1;
     if (filters.withRevenue) count += 1;
     if (filters.withAttendances) count += 1;
     return count;
@@ -252,8 +249,7 @@ const AdminReports = () => {
 
   const handleClearFilters = () => {
     setFilters({
-      partnerName: "",
-      minAttendances: "",
+    partnerId: "",
       withRevenue: false,
       withAttendances: false,
     });
@@ -293,25 +289,88 @@ const AdminReports = () => {
                     </SheetHeader>
                     <div className="flex flex-col gap-6 py-6">
                       <div className="space-y-2">
-                        <Label htmlFor="filter-partner">Nome, documento ou telefone</Label>
-                        <Input
-                          id="filter-partner"
-                          value={filters.partnerName}
-                          onChange={(event) => handleFilterChange("partnerName", event.target.value)}
-                          placeholder="Ex.: Clínica XYZ ou 00.000.000/0000-00"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="filter-min-attendances">Número mínimo de atendimentos</Label>
-                        <Input
-                          id="filter-min-attendances"
-                          type="number"
-                          min={0}
-                          value={filters.minAttendances}
-                          onChange={(event) => handleFilterChange("minAttendances", event.target.value)}
-                          placeholder="Ex.: 5"
-                        />
+                        <Label>Selecionar parceria</Label>
+                        <Popover open={partnerSelectOpen} onOpenChange={setPartnerSelectOpen}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={partnerSelectOpen}
+                              className="w-full justify-between"
+                            >
+                              <span className="flex flex-col items-start">
+                                <span className="text-sm font-medium">
+                                  {selectedPartner ? selectedPartner.nome : "Todas as parcerias"}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {selectedPartner
+                                    ? selectedPartner.cnpj_cpf ?? selectedPartner.telefone ?? "Sem informações adicionais"
+                                    : "Toque para escolher"}
+                                </span>
+                              </span>
+                              {selectedPartner ? (
+                                <XCircle
+                                  className="h-4 w-4 opacity-60"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    handleFilterChange("partnerId", "");
+                                    setPartnerSelectOpen(false);
+                                  }}
+                                />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 opacity-60" />
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="p-0 w-80" align="start">
+                            <Command>
+                              <CommandInput placeholder="Buscar por nome, documento ou telefone" />
+                              <CommandEmpty>Nenhuma parceria encontrada.</CommandEmpty>
+                              {selectedPartner && (
+                                <>
+                                  <CommandGroup heading="Ações">
+                                    <CommandItem
+                                      value="clear-selection"
+                                      onSelect={() => {
+                                        handleFilterChange("partnerId", "");
+                                        setPartnerSelectOpen(false);
+                                      }}
+                                    >
+                                      Limpar seleção
+                                    </CommandItem>
+                                  </CommandGroup>
+                                  <CommandSeparator />
+                                </>
+                              )}
+                              <CommandGroup heading="Parcerias">
+                                {partnershipSummary.map((partner) => (
+                                  <CommandItem
+                                    key={partner.id}
+                                    value={partner.id}
+                                    keywords={[
+                                      partner.nome,
+                                      partner.cnpj_cpf ?? "",
+                                      partner.telefone ?? "",
+                                      sanitizeDigits(partner.cnpj_cpf),
+                                      sanitizeDigits(partner.telefone),
+                                    ]}
+                                    onSelect={() => {
+                                      handleFilterChange("partnerId", partner.id);
+                                      setPartnerSelectOpen(false);
+                                    }}
+                                  >
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">{partner.nome}</span>
+                                      <span className="text-xs text-muted-foreground">
+                                        {partner.cnpj_cpf || partner.telefone || "Sem informações adicionais"}
+                                      </span>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                       </div>
 
                       <div className="flex items-center justify-between space-x-2">

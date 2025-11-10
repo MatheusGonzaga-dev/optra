@@ -5,7 +5,7 @@ export function usePermissions() {
 
   const hasPermission = (permission: string): boolean => {
     // Admin tem todas as permissões
-    if (usuario?.perfil === 'admin') {
+    if (usuario?.perfil === 'ADMINISTRADOR') {
       return true;
     }
     
@@ -14,7 +14,7 @@ export function usePermissions() {
 
   const hasAnyPermission = (permissionList: string[]): boolean => {
     // Admin tem todas as permissões
-    if (usuario?.perfil === 'admin') {
+    if (usuario?.perfil === 'ADMINISTRADOR') {
       return true;
     }
     
@@ -23,7 +23,7 @@ export function usePermissions() {
 
   const hasAllPermissions = (permissionList: string[]): boolean => {
     // Admin tem todas as permissões
-    if (usuario?.perfil === 'admin') {
+    if (usuario?.perfil === 'ADMINISTRADOR') {
       return true;
     }
     

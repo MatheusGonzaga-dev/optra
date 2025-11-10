@@ -1,10 +1,11 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useMemo } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, Users, Calendar, FileText, Settings, LogOut, Menu, X, UserPlus, ClipboardList, DollarSign, Clock, UserCog, Package, Handshake, Receipt, TrendingUp, Tag, ChevronDown, Wrench, Shield } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 import eyeLogo from "@/assets/eye-logo-white.png";
 
 interface DashboardLayoutProps {
@@ -17,6 +18,7 @@ type MenuItem = {
   label: string;
   path?: string;
   children?: MenuItem[];
+  permission?: string; // Permissão necessária para visualizar este item
 };
 
 const DashboardLayout = ({
@@ -25,7 +27,8 @@ const DashboardLayout = ({
 }: DashboardLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signOut } = useAuth();
+  const { signOut, usuario } = useAuth();
+  const { hasPermission } = usePermissions();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     Atendimento: true,
@@ -43,18 +46,21 @@ const DashboardLayout = ({
     admin: [{
       icon: LayoutDashboard,
       label: "Dashboard",
-      path: "/admin/dashboard"
+      path: "/admin/dashboard",
+      permission: "dashboard.view"
     }, {
       icon: ClipboardList,
       label: "Atendimento",
       children: [{
         icon: Clock,
         label: "Fila de Atendimento",
-        path: "/admin/queue"
+        path: "/admin/queue",
+        permission: "fila.view"
       }, {
         icon: ClipboardList,
         label: "Histórico de Atendimentos",
-        path: "/admin/appointments"
+        path: "/admin/appointments",
+        permission: "atendimentos.view"
       }]
     }, {
       icon: UserPlus,
@@ -62,19 +68,23 @@ const DashboardLayout = ({
       children: [{
         icon: Users,
         label: "Pacientes",
-        path: "/admin/patients"
+        path: "/admin/patients",
+        permission: "pacientes.view"
       }, {
         icon: Handshake,
         label: "Parcerias",
-        path: "/admin/partnerships"
+        path: "/admin/partnerships",
+        permission: "parcerias.view"
       }, {
         icon: Package,
         label: "Serviços",
-        path: "/admin/services"
+        path: "/admin/services",
+        permission: "servicos.view"
       }, {
         icon: Tag,
         label: "Categorias",
-        path: "/admin/categories"
+        path: "/admin/categories",
+        permission: "categorias.view"
       }]
     }, {
       icon: DollarSign,
@@ -82,11 +92,13 @@ const DashboardLayout = ({
       children: [{
         icon: Receipt,
         label: "Contas a Pagar",
-        path: "/admin/expenses"
+        path: "/admin/expenses",
+        permission: "contas_pagar.view"
       }, {
         icon: TrendingUp,
         label: "Contas a Receber",
-        path: "/admin/receivables"
+        path: "/admin/receivables",
+        permission: "contas_receber.view"
       }]
     }, {
       icon: Wrench,
@@ -94,23 +106,28 @@ const DashboardLayout = ({
       children: [{
         icon: Shield,
         label: "Grupos",
-        path: "/admin/groups"
+        path: "/admin/groups",
+        permission: "grupos.view"
       }, {
         icon: UserCog,
         label: "Acessos",
-        path: "/admin/access"
+        path: "/admin/access",
+        permission: "usuarios.view"
       }]
     }, {
       icon: FileText,
       label: "Relatórios",
+      permission: "relatorios.view",
       children: [{
         icon: FileText,
         label: "Visão Geral",
-        path: "/admin/reports"
+        path: "/admin/reports",
+        permission: "relatorios.view"
       }, {
         icon: Handshake,
         label: "Parcerias",
-        path: "/admin/reports?tab=parcerias"
+        path: "/admin/reports?tab=parcerias",
+        permission: "relatorios.view"
       }]
     }, {
       icon: Settings,
@@ -171,7 +188,50 @@ const DashboardLayout = ({
       navigate("/login");
     }
   };
-  const currentMenuItems = menuItems[role];
+
+  // Filtrar menu items baseado nas permissões do usuário
+  const filterMenuItemsByPermissions = (items: MenuItem[]): MenuItem[] => {
+    // Se for ADMINISTRADOR (perfil), mostra tudo
+    if (usuario?.perfil === 'ADMINISTRADOR') {
+      return items;
+    }
+
+    return items
+      .map(item => {
+        // Se o item tem children, filtrar os children
+        if (item.children) {
+          const filteredChildren = item.children.filter(child => {
+            // Se não tem permissão definida, mostra o item
+            if (!child.permission) return true;
+            // Se tem permissão, verifica se o usuário tem essa permissão
+            return hasPermission(child.permission);
+          });
+
+          // Se não sobrou nenhum child após o filtro, não mostra o item pai
+          if (filteredChildren.length === 0) return null;
+
+          return {
+            ...item,
+            children: filteredChildren
+          };
+        }
+
+        // Se o item não tem children, verifica a permissão dele diretamente
+        if (item.permission && !hasPermission(item.permission)) {
+          return null;
+        }
+
+        return item;
+      })
+      .filter((item): item is MenuItem => item !== null);
+  };
+
+  const currentMenuItems = useMemo(() => {
+    const filtered = filterMenuItemsByPermissions(menuItems[role]);
+    console.log('Menu filtrado:', filtered);
+    console.log('Perfil do usuário:', usuario?.perfil);
+    return filtered;
+  }, [role, usuario?.perfil, hasPermission]);
   const isRouteActive = (target?: string) => {
     if (!target) return false;
     const [path, search] = target.split("?");
