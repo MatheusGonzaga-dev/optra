@@ -1,9 +1,9 @@
 {
   "version": 2,
-  "buildCommand": "rm -rf node_modules/.vite dist .vercel/cache .next && npm ci && npm run build",
+  "buildCommand": "rm -rf node_modules/.vite dist .vercel/cache .next && npm install && npm run build",
   "outputDirectory": "dist",
   "devCommand": "npm run dev",
-  "installCommand": "npm ci --force",
+  "installCommand": "npm install",
   "framework": "vite",
   "cleanUrls": true,
   "rewrites": [
