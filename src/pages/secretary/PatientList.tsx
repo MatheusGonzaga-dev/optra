@@ -950,7 +950,9 @@ export default function PatientList() {
                               variant="ghost"
                               size="sm"
                               onClick={() => {
-                                const basePath = usuario?.perfil === 'ADMINISTRADOR' ? '/admin/patient' : '/secretary/patient';
+                                const adminPath = '/admin/patient';
+                                const secretaryPath = '/secretary/patient';
+                                const basePath = usuario?.perfil === 'ADMINISTRADOR' ? adminPath : secretaryPath;
                                 navigate(`${basePath}/${patient.id}`);
                               }}
                               className="text-xs"
