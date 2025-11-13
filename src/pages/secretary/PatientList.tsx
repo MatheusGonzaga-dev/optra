@@ -947,15 +947,15 @@ export default function PatientList() {
                                   <MessageSquare className="h-4 w-4" />
                             </Button>
                             <Button
-                                  variant="ghost"
+                              variant="ghost"
                               size="sm"
                               onClick={() => {
                                 const basePath = usuario?.perfil === 'ADMINISTRADOR' ? '/admin/patient' : '/secretary/patient';
                                 navigate(`${basePath}/${patient.id}`);
                               }}
-                                  className="text-xs"
+                              className="text-xs"
                             >
-                                  Ver
+                              Ver
                             </Button>
                           </div>
                         </TableCell>
