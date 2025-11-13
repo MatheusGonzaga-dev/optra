@@ -31,11 +31,11 @@ const DashboardLayout = ({
   const { hasPermission } = usePermissions();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    Atendimento: true,
-    Cadastros: true,
-    Financeiro: true,
-    Ferramentas: true,
-    Relatórios: true
+    Atendimento: false,
+    Cadastros: false,
+    Financeiro: false,
+    Ferramentas: false,
+    Relatórios: false
   });
   const roleNames = {
     admin: "Administrador",

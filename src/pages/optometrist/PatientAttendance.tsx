@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarIcon, Save, Edit, Printer, FileDown, ArrowLeft, Loader2 } from "lucide-react";
+import { CalendarIcon, Save, Edit, Printer, FileDown, ArrowLeft, Loader2, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -48,19 +48,34 @@ const PatientAttendance = () => {
     return '/optometrist/queue';
   };
   const [prescriptionData, setPrescriptionData] = useState({
-    type: "distance", // distance ou both
-    // Para longe apenas
     distanceOD: { spherical: "", cylindrical: "", axis: "", av: "" },
     distanceOE: { spherical: "", cylindrical: "", axis: "", av: "" },
-    // Para longe e perto
-    nearOD: { spherical: "", cylindrical: "", axis: "", av: "" },
-    nearOE: { spherical: "", cylindrical: "", axis: "", av: "" },
-    addition: "",
-    // Gerais
     lensType: "",
     observations: "",
     recommendations: "",
+    addition: "",
   });
+
+  const [exams, setExams] = useState<Array<{
+    id?: string;
+    nome_exame: string;
+    resultado: string;
+    observacoes: string;
+  }>>([]);
+
+  const addExam = () => {
+    setExams([...exams, { nome_exame: "", resultado: "", observacoes: "" }]);
+  };
+
+  const removeExam = (index: number) => {
+    setExams(exams.filter((_, i) => i !== index));
+  };
+
+  const updateExam = (index: number, field: string, value: string) => {
+    const updated = [...exams];
+    updated[index] = { ...updated[index], [field]: value };
+    setExams(updated);
+  };
 
   // Carregar parcerias
   useEffect(() => {
@@ -223,7 +238,12 @@ const PatientAttendance = () => {
     try {
       // Salvar prontuário
       if (id) {
-        await fetch(`http://localhost:4000/atendimentos/${id}/prontuario`, {
+        console.log('📝 Salvando prontuário:', {
+          prescriptionData,
+          returnDate: returnDate ? returnDate.toISOString() : undefined
+        });
+        
+        const prontuarioResp = await fetch(`http://localhost:4000/atendimentos/${id}/prontuario`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -233,6 +253,40 @@ const PatientAttendance = () => {
             returnDate: returnDate ? returnDate.toISOString() : undefined,
           })
         });
+        
+        if (!prontuarioResp.ok) {
+          const errorText = await prontuarioResp.text();
+          console.error('❌ Erro ao salvar prontuário:', errorText);
+          throw new Error('Erro ao salvar prontuário');
+        }
+        
+        const prontuarioData = await prontuarioResp.json();
+        console.log('✅ Prontuário salvo:', prontuarioData);
+
+        // Salvar exames
+        console.log('📝 Salvando exames:', exams);
+        const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+        for (const exam of exams) {
+          if (exam.nome_exame && exam.resultado) {
+            const examResp = await fetch(`${API_BASE_URL}/exames/${id}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                nome_exame: exam.nome_exame,
+                resultado: exam.resultado,
+                observacoes: exam.observacoes || '',
+              })
+            });
+            if (!examResp.ok) {
+              const errorText = await examResp.text();
+              console.error('❌ Erro ao salvar exame:', errorText);
+            } else {
+              const examData = await examResp.json();
+              console.log('✅ Exame salvo:', examData);
+            }
+          }
+        }
+        console.log('✅ Todos os exames foram processados');
 
         // Salvar ordem de serviço
         const subtotal = serviceOrder.basePrice;
@@ -271,6 +325,228 @@ const PatientAttendance = () => {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handlePrintPrescription = () => {
+    if (!filaData || !patient) return;
+
+    const formatValue = (value: string) => value?.trim() ? value : "—";
+    const formatAdicao = (value: string) => value?.trim() ? value : "";
+    const formatDateBr = (date?: Date) => date ? format(date, "dd/MM/yyyy") : "____/____/______";
+    const patientFirstName = patient?.nome_completo?.split(" ")[0] || "Optometrista";
+    const optometristName = filaData.optometrista_nome || `Dr. ${patientFirstName}`;
+    const patientAgeDisplay = patient?.idade ? `${patient.idade} anos` : "_____ anos";
+
+    const distanceOD = prescriptionData.distanceOD;
+    const distanceOE = prescriptionData.distanceOE;
+
+    const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Receituário</title>
+    <style>
+      @page { size: A4; margin: 8mm; }
+      * { box-sizing: border-box; font-family: 'Inter', Arial, sans-serif; }
+      body { margin: 0; padding: 4mm; background: #f1f5f9; color: #0f172a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .wrapper { max-width: 720px; margin: 0 auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; overflow: hidden; box-shadow: 0 25px 50px rgba(15, 23, 42, 0.12); page-break-inside: avoid; }
+      .header { display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; background: linear-gradient(135deg, #1d4ed8, #0ea5e9); color: #fff; }
+      .brand { display: flex; align-items: center; gap: 12px; }
+      .brand__logo { width: 46px; height: 46px; border-radius: 12px; background: rgba(255,255,255,0.22); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 17px; letter-spacing: 0.8px; }
+      .brand__title { font-size: 18px; font-weight: 700; }
+      .brand__subtitle { font-size: 11px; opacity: 0.92; margin-top: 3px; letter-spacing: 0.15px; }
+      .meta { text-align: right; font-size: 11px; opacity: 0.95; }
+      .section { padding: 16px 24px; border-top: 1px solid #e2e8f0; page-break-inside: avoid; }
+      .section:first-child { border-top: none; }
+      .section__title { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: #0f172a; display: flex; align-items: center; gap: 9px; }
+      .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+      .info-item { display: flex; flex-direction: column; gap: 4px; }
+      .info-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; }
+      .info-value { font-size: 12px; font-weight: 600; color: #0f172a; }
+      table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+      th, td { border: 1px solid #e2e8f0; padding: 7px 8px; text-align: center; font-size: 11px; }
+      th { background: #f8fafc; font-weight: 600; color: #475569; }
+      td { font-weight: 500; }
+      .table-subtitle { text-align: left; font-size: 11px; font-weight: 600; color: #1e293b; margin-top: 10px; }
+      .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 10px; }
+      .option { display: flex; align-items: center; gap: 7px; font-size: 10px; color: #475569; }
+      .checkbox { width: 13px; height: 13px; border: 2px solid #cbd5f5; border-radius: 5px; }
+      .recommendations { margin-top: 12px; background: #f8fafc; border-radius: 10px; padding: 13px 16px; border: 1px solid #e2e8f0; }
+      .recommendations h4 { margin: 0 0 8px; font-size: 11px; color: #1e293b; font-weight: 600; }
+      .recommendations ul { margin: 0; padding-left: 14px; display: grid; gap: 5px; font-size: 9.5px; color: #475569; line-height: 1.4; }
+      .footer-info { padding: 14px 24px; border-top: 1px solid #e2e8f0; background: #f8fafc; }
+      .footer-text { color: #475569; }
+      .footer-text strong { color: #1e293b; }
+      .footer { padding: 12px 24px 14px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: #64748b; }
+      .signature { text-align: right; font-size: 10px; }
+      .signature-line { width: 150px; border-bottom: 1px solid #94a3b8; margin-bottom: 5px; margin-left: auto; }
+      .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; background: rgba(37, 99, 235, 0.12); color: #1d4ed8; padding: 5px 11px; border-radius: 999px; font-weight: 600; letter-spacing: 0.025em; border: 1px solid rgba(37, 99, 235, 0.18); }
+      .badge-dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; display: inline-block; }
+      .adicao-destaque { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; align-items: center; }
+      .adicao-box { background: linear-gradient(135deg, #fef3c7, #fde68a); border: 3px solid #f59e0b; border-radius: 12px; padding: 18px 22px; text-align: center; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.22); }
+      .adicao-label { display: block; font-size: 12px; font-weight: 700; color: #92400e; text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 8px; }
+      .adicao-value { display: block; font-size: 28px; font-weight: 800; color: #92400e; letter-spacing: 0.05em; min-height: 38px; border-bottom: 3px solid #f59e0b; padding-bottom: 4px; }
+      @media print {
+        body { background: #f1f5f9; padding: 0; }
+        .wrapper { box-shadow: none; border: none; }
+        .header { background: linear-gradient(135deg, #1d4ed8, #0ea5e9); color: #fff; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <div class="header">
+        <div class="brand">
+          <div class="brand__logo">OP</div>
+          <div>
+            <div class="brand__title">Optra Vision</div>
+            <div class="brand__subtitle">Centro de Visão | Receituário Óptico</div>
+          </div>
+        </div>
+        <div class="meta">
+          <div><strong>Data:</strong> ${formatDateBr(returnDate)}</div>
+          <div><strong>Idade:</strong> ${patientAgeDisplay}</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3 class="section__title">Dados do Paciente</h3>
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Paciente</span>
+            <span class="info-value">${patient.nome_completo || "—"}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Procedimento</span>
+            <span class="info-value">${serviceOrder.serviceName || "—"}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Atendido por</span>
+            <span class="info-value">${optometristName}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3 class="section__title">Prescrição para Óculos</h3>
+        <div class="badge"><span class="badge-dot"></span> Somente Longe</div>
+
+        <div class="table-subtitle">Para Longe</div>
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Esférico</th>
+              <th>Cilíndrico</th>
+              <th>Eixo</th>
+              <th>AV</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>OD</td>
+              <td>${formatValue(distanceOD.spherical)}</td>
+              <td>${formatValue(distanceOD.cylindrical)}</td>
+              <td>${formatValue(distanceOD.axis)}</td>
+              <td>${formatValue(distanceOD.av)}</td>
+            </tr>
+            <tr>
+              <td>OE</td>
+              <td>${formatValue(distanceOE.spherical)}</td>
+              <td>${formatValue(distanceOE.cylindrical)}</td>
+              <td>${formatValue(distanceOE.axis)}</td>
+              <td>${formatValue(distanceOE.av)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="adicao-destaque">
+          <div class="adicao-box">
+            <span class="adicao-label">ADIÇÃO</span>
+            <span class="adicao-value">${formatAdicao(prescriptionData.addition)}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Tipo de Lente</span>
+            <span class="info-value">${formatValue(prescriptionData.lensType)}</span>
+          </div>
+        </div>
+
+        <div class="options">
+          <div class="option"><div class="checkbox"></div> Filtro Blue</div>
+          <div class="option"><div class="checkbox"></div> Antirreflexo Digital</div>
+          <div class="option"><div class="checkbox"></div> Fotocromático</div>
+          <div class="option"><div class="checkbox"></div> Multifocal Digital</div>
+          <div class="option"><div class="checkbox"></div> Multifocal Blue</div>
+          <div class="option"><div class="checkbox"></div> Multifocal Fotocromático</div>
+        </div>
+
+        <div class="info-grid" style="margin-top: 12px;">
+          <div class="info-item">
+            <span class="info-label">Observações do Profissional</span>
+            <span class="info-value" style="min-height: 36px; font-size: 11px; line-height: 1.4;">${formatValue(prescriptionData.observations)}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Recomendações Personalizadas</span>
+            <span class="info-value" style="min-height: 36px; font-size: 11px; line-height: 1.4;">${formatValue(prescriptionData.recommendations)}</span>
+          </div>
+        </div>
+
+        <div class="recommendations">
+          <h4>Recomendações Importantes</h4>
+          <ul>
+            <li>Adquira seus óculos na óptica de sua preferência, venda casada é ilegal</li>
+            <li>Traga seus óculos pra conferência</li>
+            <li>Para lentes de contato sempre siga as orientações de uso do seu especialista</li>
+            <li>O paciente encaminhado deve procurar especialista o mais rápido possível</li>
+            <li>O atestado optométrico não é um atestado médico, ficando a critério da empresa, instituição ou pessoa física a sua aceitação para abonamento de falta ou similares</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-info">
+        <div class="footer-text">
+          <p style="margin: 0 0 7px 0; font-size: 9px; line-height: 1.35;">
+            Para maiores informações, contate o Conselho Regional de Óptica e Optometria do Estado de São Paulo - CROOSP<br>
+            Telefone: 11 3259-7748 | 11 3331-3537 - www.croosp.org.br<br>
+            contato@croosp.org.br
+          </p>
+          <p style="margin: 0 0 6px 0; font-size: 8.5px; line-height: 1.35;">
+            <strong>OPTOMETRIA:</strong> Atividade Profissional da Área da Saúde<br>
+            <strong>Classificação Brasileira de Ocupações - CBO - MTE - 3233-05</strong><br>
+            <strong>Classificação Nacional das Atividades Econômicas - CNAE - IBGE - 8650-0/99</strong>
+          </p>
+          <p style="margin: 0; font-size: 8.5px; line-height: 1.35; font-style: italic;">
+            Prescrição para correção da visão com lentes corretivas e/ou óculos. Para uso de lentes de contato, necessário fazer conversão da distância ao vértice e compensação.
+          </p>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div>
+          Resultado de atendimento realizado em conformidade com o CBO nº 3223 / optometria. Documento válido em todo território nacional.
+        </div>
+        <div class="signature">
+          <div class="signature-line"></div>
+          <div>${filaData.optometrista_nome || "Optometrista Responsável"}</div>
+          <div>Optometrista</div>
+        </div>
+      </div>
+    </div>
+    <script>
+      window.print();
+      window.onafterprint = () => window.close();
+    </script>
+  </body>
+</html>`;
+
+    const printable = window.open("", "_blank");
+    if (!printable) {
+      toast.error("Não foi possível abrir o receituário para impressão.");
+      return;
+    }
+    printable.document.write(html);
+    printable.document.close();
+    printable.focus();
   };
 
   const handleExportPDF = () => {
@@ -362,8 +638,9 @@ const PatientAttendance = () => {
 
         {/* Prescription Section */}
         <Tabs defaultValue="prescription" className="w-full">
-          <TabsList className="grid w-full max-w-3xl grid-cols-3 mb-6">
+          <TabsList className="grid w-full max-w-3xl grid-cols-4 mb-6">
             <TabsTrigger value="prescription">Prescrição</TabsTrigger>
+            <TabsTrigger value="exams">Exames</TabsTrigger>
             <TabsTrigger value="patient">Dados do Paciente</TabsTrigger>
             <TabsTrigger value="serviceOrder">Ordem de Serviço</TabsTrigger>
           </TabsList>
@@ -371,254 +648,175 @@ const PatientAttendance = () => {
           {/* Prescrição */}
           <TabsContent value="prescription">
             <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-6">Prescrição para Óculos</h2>
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold">Prescrição para Óculos</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Preencha os campos abaixo para gerar o receituário completo.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={handlePrintPrescription}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Imprimir Receituário
+                </Button>
+              </div>
               
-              <Tabs value={prescriptionData.type} onValueChange={(v) => setPrescriptionData({...prescriptionData, type: v})}>
-                <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
-                  <TabsTrigger value="distance">Somente Longe</TabsTrigger>
-                  <TabsTrigger value="both">Longe e Perto</TabsTrigger>
-                </TabsList>
-
-                {/* Distance Only */}
-                <TabsContent value="distance" className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="font-medium text-base">Para Longe</h3>
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                        <Label className="col-span-2 md:col-span-1 self-center">OD:</Label>
-                        <div>
+              <div className="space-y-8">
+                {[
+                  {
+                    label: "OD",
+                    distanceKey: "distanceOD" as const,
+                  },
+                  {
+                    label: "OE",
+                    distanceKey: "distanceOE" as const,
+                  },
+                ].map((eye) => (
+                  <div key={eye.label} className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-base">Olho {eye.label}</h3>
+                      <div className="flex-1 border-t border-dashed border-muted ml-4" />
+                    </div>
+                    <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+                      <p className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+                        Para Longe
+                      </p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="md:col-span-2">
                           <Label className="text-xs">Esférico</Label>
-                          <Input 
-                            placeholder="Esf" 
-                            value={prescriptionData.distanceOD.spherical}
-                            onChange={(e) => setPrescriptionData({
-                              ...prescriptionData,
-                              distanceOD: {...prescriptionData.distanceOD, spherical: e.target.value}
-                            })}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Cilíndrico</Label>
-                          <Input 
-                            placeholder="Cil"
-                            value={prescriptionData.distanceOD.cylindrical}
-                            onChange={(e) => setPrescriptionData({
-                              ...prescriptionData,
-                              distanceOD: {...prescriptionData.distanceOD, cylindrical: e.target.value}
-                            })}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Eixo</Label>
-                          <Input 
-                            placeholder="°"
-                            value={prescriptionData.distanceOD.axis}
-                            onChange={(e) => setPrescriptionData({
-                              ...prescriptionData,
-                              distanceOD: {...prescriptionData.distanceOD, axis: e.target.value}
-                            })}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">AV</Label>
-                          <Input 
-                            placeholder="AV"
-                            value={prescriptionData.distanceOD.av}
-                            onChange={(e) => setPrescriptionData({
-                              ...prescriptionData,
-                              distanceOD: {...prescriptionData.distanceOD, av: e.target.value}
-                            })}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                        <Label className="col-span-2 md:col-span-1 self-center">OE:</Label>
-                        <div>
-                          <Label className="text-xs">Esférico</Label>
-                          <Input 
+                          <Input
                             placeholder="Esf"
-                            value={prescriptionData.distanceOE.spherical}
-                            onChange={(e) => setPrescriptionData({
-                              ...prescriptionData,
-                              distanceOE: {...prescriptionData.distanceOE, spherical: e.target.value}
-                            })}
+                            value={prescriptionData[eye.distanceKey].spherical}
+                            onChange={(e) =>
+                              setPrescriptionData({
+                                ...prescriptionData,
+                                [eye.distanceKey]: {
+                                  ...prescriptionData[eye.distanceKey],
+                                  spherical: e.target.value,
+                                },
+                              })
+                            }
                           />
                         </div>
                         <div>
                           <Label className="text-xs">Cilíndrico</Label>
-                          <Input 
+                          <Input
                             placeholder="Cil"
-                            value={prescriptionData.distanceOE.cylindrical}
-                            onChange={(e) => setPrescriptionData({
-                              ...prescriptionData,
-                              distanceOE: {...prescriptionData.distanceOE, cylindrical: e.target.value}
-                            })}
+                            value={prescriptionData[eye.distanceKey].cylindrical}
+                            onChange={(e) =>
+                              setPrescriptionData({
+                                ...prescriptionData,
+                                [eye.distanceKey]: {
+                                  ...prescriptionData[eye.distanceKey],
+                                  cylindrical: e.target.value,
+                                },
+                              })
+                            }
                           />
                         </div>
                         <div>
                           <Label className="text-xs">Eixo</Label>
-                          <Input 
+                          <Input
                             placeholder="°"
-                            value={prescriptionData.distanceOE.axis}
-                            onChange={(e) => setPrescriptionData({
-                              ...prescriptionData,
-                              distanceOE: {...prescriptionData.distanceOE, axis: e.target.value}
-                            })}
+                            value={prescriptionData[eye.distanceKey].axis}
+                            onChange={(e) =>
+                              setPrescriptionData({
+                                ...prescriptionData,
+                                [eye.distanceKey]: {
+                                  ...prescriptionData[eye.distanceKey],
+                                  axis: e.target.value,
+                                },
+                              })
+                            }
                           />
                         </div>
                         <div>
                           <Label className="text-xs">AV</Label>
-                          <Input 
+                          <Input
                             placeholder="AV"
-                            value={prescriptionData.distanceOE.av}
-                            onChange={(e) => setPrescriptionData({
-                              ...prescriptionData,
-                              distanceOE: {...prescriptionData.distanceOE, av: e.target.value}
-                            })}
+                            value={prescriptionData[eye.distanceKey].av}
+                            onChange={(e) =>
+                              setPrescriptionData({
+                                ...prescriptionData,
+                                [eye.distanceKey]: {
+                                  ...prescriptionData[eye.distanceKey],
+                                  av: e.target.value,
+                                },
+                              })
+                            }
                           />
                         </div>
                       </div>
                     </div>
                   </div>
+                ))}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Lente</Label>
-                      <Input 
-                        placeholder="Tipo de lente"
-                        value={prescriptionData.lensType}
-                        onChange={(e) => setPrescriptionData({...prescriptionData, lensType: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Label>Retorno em</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !returnDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {returnDate ? format(returnDate, "dd/MM/yyyy") : <span>Selecionar data</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={returnDate}
-                            onSelect={setReturnDate}
-                            initialFocus
-                            className="pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label>Adição</Label>
+                    <Input 
+                      placeholder="Informe a adição (opcional)"
+                      value={prescriptionData.addition}
+                      onChange={(e) => setPrescriptionData({...prescriptionData, addition: e.target.value})}
+                    />
                   </div>
+                  <div>
+                    <Label>Lente</Label>
+                    <Input 
+                      placeholder="Tipo de lente"
+                      value={prescriptionData.lensType}
+                      onChange={(e) => setPrescriptionData({...prescriptionData, lensType: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label>Retorno em</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !returnDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {returnDate ? format(returnDate, "dd/MM/yyyy") : <span>Selecionar data</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={returnDate}
+                          onSelect={setReturnDate}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Observações</Label>
-                      <Textarea
-                        placeholder="Digite as observações do atendimento..."
-                        className="min-h-[100px]"
-                        value={prescriptionData.observations}
-                        onChange={(e) => setPrescriptionData({...prescriptionData, observations: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Label>Recomendações</Label>
-                      <Textarea
-                        placeholder="Digite as recomendações para o paciente..."
-                        className="min-h-[100px]"
-                        value={prescriptionData.recommendations}
-                        onChange={(e) => setPrescriptionData({...prescriptionData, recommendations: e.target.value})}
-                      />
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Observações</Label>
+                    <Textarea
+                      placeholder="Digite as observações do atendimento..."
+                      className="min-h-[100px]"
+                      value={prescriptionData.observations}
+                      onChange={(e) => setPrescriptionData({...prescriptionData, observations: e.target.value})}
+                    />
                   </div>
-                </TabsContent>
-
-                {/* Distance and Near */}
-                <TabsContent value="both" className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="font-medium text-base">Para Longe</h3>
-                    <div className="space-y-3">
-                      {/* OD e OE similar ao distance only */}
-                      <div className="text-muted-foreground italic">
-                        Implementar campos para longe e perto...
-                      </div>
-                    </div>
+                  <div>
+                    <Label>Recomendações</Label>
+                    <Textarea
+                      placeholder="Digite as recomendações para o paciente..."
+                      className="min-h-[100px]"
+                      value={prescriptionData.recommendations}
+                      onChange={(e) => setPrescriptionData({...prescriptionData, recommendations: e.target.value})}
+                    />
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label>Adição</Label>
-                      <Input 
-                        placeholder="Adição para perto"
-                        value={prescriptionData.addition}
-                        onChange={(e) => setPrescriptionData({...prescriptionData, addition: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Label>Lente</Label>
-                      <Input 
-                        placeholder="Tipo de lente"
-                        value={prescriptionData.lensType}
-                        onChange={(e) => setPrescriptionData({...prescriptionData, lensType: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Label>Retorno em</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !returnDate && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {returnDate ? format(returnDate, "dd/MM/yyyy") : <span>Selecionar data</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={returnDate}
-                            onSelect={setReturnDate}
-                            initialFocus
-                            className="pointer-events-auto"
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Observações</Label>
-                      <Textarea
-                        placeholder="Digite as observações do atendimento..."
-                        className="min-h-[100px]"
-                        value={prescriptionData.observations}
-                        onChange={(e) => setPrescriptionData({...prescriptionData, observations: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Label>Recomendações</Label>
-                      <Textarea
-                        placeholder="Digite as recomendações para o paciente..."
-                        className="min-h-[100px]"
-                        value={prescriptionData.recommendations}
-                        onChange={(e) => setPrescriptionData({...prescriptionData, recommendations: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
+                </div>
+              </div>
             </Card>
           </TabsContent>
 
@@ -933,6 +1131,78 @@ const PatientAttendance = () => {
                     </div>
                   </div>
                 </div>
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* Exames */}
+          <TabsContent value="exams">
+            <Card className="p-6">
+              <div className="flex items-start justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-xl font-semibold">Exames Clínicos</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Registre os resultados dos exames realizados durante o atendimento.
+                  </p>
+                </div>
+                <Button onClick={addExam} variant="outline" size="sm">
+                  <span className="mr-2">+</span>
+                  Adicionar Exame
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                {exams.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Nenhum exame adicionado ainda.</p>
+                    <p className="text-sm mt-2">Clique em "Adicionar Exame" para começar.</p>
+                  </div>
+                ) : (
+                  exams.map((exam, index) => (
+                    <div key={index} className="border rounded-lg p-4 space-y-3 bg-muted/30">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold text-sm">Exame {index + 1}</h4>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeExam(index)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          Remover
+                        </Button>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Nome do Exame *</Label>
+                          <Input
+                            placeholder="Ex: Refração, Tonometria, Biomicroscopia..."
+                            value={exam.nome_exame}
+                            onChange={(e) => updateExam(index, 'nome_exame', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label>Resultado *</Label>
+                          <Input
+                            placeholder="Ex: Miopia bilateral, 14 mmHg..."
+                            value={exam.resultado}
+                            onChange={(e) => updateExam(index, 'resultado', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <Label>Observações</Label>
+                        <Textarea
+                          placeholder="Observações adicionais sobre o exame..."
+                          value={exam.observacoes}
+                          onChange={(e) => updateExam(index, 'observacoes', e.target.value)}
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </Card>
           </TabsContent>

@@ -17,6 +17,7 @@ import { router as fornecedoresRouter } from './routes/fornecedores.js';
 import { router as categoriasRouter } from './routes/categorias.js';
 import { router as gruposRouter } from './routes/grupos.js';
 import { router as dashboardRouter } from './routes/dashboard.js';
+import { router as examesRouter } from './routes/exames.js';
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use('/fornecedores', fornecedoresRouter);
 app.use('/categorias', categoriasRouter);
 app.use('/grupos', gruposRouter);
 app.use('/dashboard', dashboardRouter);
+app.use('/exames', examesRouter);
 
 app.get('/', (_req, res) => {
   res.json({ name: 'optra-vision-backend', status: 'ok' });
