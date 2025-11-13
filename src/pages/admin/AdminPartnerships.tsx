@@ -41,7 +41,7 @@ const AdminPartnerships = () => {
     const fetchPartnerships = async () => {
       try {
         setLoading(true);
-        const resp = await fetch(`${API_BASE_URL}/parcerias');
+        const resp = await fetch(`${API_BASE_URL}/parcerias`);
         if (!resp.ok) {
           const errorData = await resp.json().catch(() => ({ error: 'Erro ao carregar parcerias' }));
           throw new Error(errorData.error || 'Erro ao carregar parcerias');
