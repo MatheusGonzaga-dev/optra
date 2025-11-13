@@ -1,10 +1,11 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
+  "buildCommand": "rm -rf node_modules/.vite dist .vercel/cache .next && npm ci && npm run build",
   "outputDirectory": "dist",
   "devCommand": "npm run dev",
-  "installCommand": "npm install",
+  "installCommand": "npm ci --force",
   "framework": "vite",
+  "cleanUrls": true,
   "rewrites": [
     {
       "source": "/api/(.*)",

@@ -97,7 +97,7 @@ const formSchema = z.object({
   }
   return true;
 }, {
-  message: "Para enviar à fila, preencha TODOS os campos da anamnese: Sintomas (mínimo 5 caracteres), Medicamentos, e Tipo de Exame. Ou marque 'Pular Anamnese' para cadastrar sem enviar à fila.",
+  message: "Para enviar à fila, preencha TODOS os campos da anamnese: Sintomas (mínimo 5 caracteres), Medicamentos, e Tipo de Exame. Ou marque \"Pular Anamnese\" para cadastrar sem enviar à fila.",
   path: ["symptoms"],
 }).refine((data) => {
   if (data.sendToQueue && !data.skipAnamnesis) {
@@ -950,10 +950,13 @@ export default function PatientList() {
                               variant="ghost"
                               size="sm"
                               onClick={() => {
+                                const userProfile = usuario?.perfil;
+                                const isAdmin = userProfile === 'ADMINISTRADOR';
                                 const adminPath = '/admin/patient';
                                 const secretaryPath = '/secretary/patient';
-                                const basePath = usuario?.perfil === 'ADMINISTRADOR' ? adminPath : secretaryPath;
-                                navigate(`${basePath}/${patient.id}`);
+                                const selectedPath = isAdmin ? adminPath : secretaryPath;
+                                const targetPath = `${selectedPath}/${patient.id}`;
+                                navigate(targetPath);
                               }}
                               className="text-xs"
                             >
