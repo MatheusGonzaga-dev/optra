@@ -5,6 +5,7 @@ import StatCard from "@/components/StatCard";
 import { Users, Calendar, DollarSign, TrendingUp, Clock, CheckCircle, FileText, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/lib/utils";
 
 interface DashboardStats {
   pacientesAtivos: {
@@ -46,7 +47,7 @@ const AdminDashboard = () => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:4000/dashboard/stats');
+        const response = await fetch(`${API_BASE_URL}/dashboard/stats`);
         
         if (!response.ok) {
           throw new Error('Erro ao buscar dados do dashboard');

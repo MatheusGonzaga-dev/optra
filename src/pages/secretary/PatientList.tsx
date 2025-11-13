@@ -44,6 +44,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/lib/utils";
 import { partnerOptics, mockDoctors } from "@/data/mockData";
 
 const formSchema = z.object({
@@ -166,7 +167,7 @@ export default function PatientList() {
     const fetchPacientes = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:4000/pacientes');
+        const response = await fetch(`${API_BASE_URL}/pacientes');
         if (!response.ok) throw new Error('Erro ao buscar pacientes');
         const data = await response.json();
         setPacientes(data);
@@ -213,7 +214,7 @@ export default function PatientList() {
 
       console.log('Dados enviados para o backend:', pacienteData);
 
-      const response = await fetch('http://localhost:4000/pacientes', {
+      const response = await fetch(`${API_BASE_URL}/pacientes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -263,7 +264,7 @@ export default function PatientList() {
             cadastrado_por_id: usuario?.id,
           };
 
-          const filaResponse = await fetch('http://localhost:4000/fila', {
+          const filaResponse = await fetch(`${API_BASE_URL}/fila', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -287,7 +288,7 @@ export default function PatientList() {
     setIsDialogOpen(false);
     form.reset();
       
-      const updatedResponse = await fetch('http://localhost:4000/pacientes');
+      const updatedResponse = await fetch(`${API_BASE_URL}/pacientes');
       if (updatedResponse.ok) {
         const data = await updatedResponse.json();
         setPacientes(data);

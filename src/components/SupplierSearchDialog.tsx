@@ -9,6 +9,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
+import { API_BASE_URL } from "@/lib/utils";
 
 interface Supplier {
   id: string;
@@ -41,7 +42,7 @@ const SupplierSearchDialog = ({ open, onOpenChange, onSelect }: SupplierSearchDi
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:4000/fornecedores');
+      const response = await fetch(`${API_BASE_URL}/fornecedores');
       if (!response.ok) {
         throw new Error('Erro ao buscar fornecedores');
       }

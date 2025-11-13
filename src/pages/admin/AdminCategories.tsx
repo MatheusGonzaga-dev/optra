@@ -27,6 +27,7 @@ import EditCategoryDialog from "@/components/EditCategoryDialog";
 import AddSubcategoryDialog from "@/components/AddSubcategoryDialog";
 import EditSubcategoryDialog from "@/components/EditSubcategoryDialog";
 import { Label } from "@/components/ui/label";
+import { API_BASE_URL } from "@/lib/utils";
 
 interface Categoria {
   id: string;
@@ -71,8 +72,8 @@ const AdminCategories = () => {
     try {
       setLoading(true);
       const url = tipoFiltro === "TODAS" 
-        ? 'http://localhost:4000/categorias'
-        : `http://localhost:4000/categorias?tipo=${tipoFiltro}`;
+        ? `${API_BASE_URL}/categorias`
+        : `${API_BASE_URL}/categorias?tipo=${tipoFiltro}`;
       
       const resp = await fetch(url);
       if (!resp.ok) throw new Error('Erro ao buscar categorias');
@@ -93,7 +94,7 @@ const AdminCategories = () => {
 
   const fetchSubcategorias = async (categoriaId: string) => {
     try {
-      const resp = await fetch(`http://localhost:4000/categorias/${categoriaId}/subcategorias`);
+      const resp = await fetch(`${API_BASE_URL}/categorias/${categoriaId}/subcategorias`);
       if (!resp.ok) throw new Error('Erro ao buscar subcategorias');
       const data = await resp.json();
       setSubcategorias(prev => ({ ...prev, [categoriaId]: data || [] }));
@@ -120,7 +121,7 @@ const AdminCategories = () => {
 
   const handleAddCategory = async (category: Omit<Categoria, "id">) => {
     try {
-      const resp = await fetch('http://localhost:4000/categorias', {
+      const resp = await fetch(`${API_BASE_URL}/categorias', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -142,7 +143,7 @@ const AdminCategories = () => {
 
   const handleEditCategory = async (updatedCategory: Categoria) => {
     try {
-      const resp = await fetch(`http://localhost:4000/categorias/${updatedCategory.id}`, {
+      const resp = await fetch(`${API_BASE_URL}/categorias/${updatedCategory.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -165,7 +166,7 @@ const AdminCategories = () => {
   const handleDeleteCategory = async () => {
     if (!deleteTarget) return;
     try {
-      const resp = await fetch(`http://localhost:4000/categorias/${deleteTarget.id}`, {
+      const resp = await fetch(`${API_BASE_URL}/categorias/${deleteTarget.id}`, {
         method: 'DELETE'
       });
       if (!resp.ok) throw new Error();
@@ -181,7 +182,7 @@ const AdminCategories = () => {
 
   const handleAddSubcategory = async (subcategory: Omit<Subcategoria, "id"> & { categoria_id: string }) => {
     try {
-      const resp = await fetch('http://localhost:4000/categorias/subcategorias', {
+      const resp = await fetch(`${API_BASE_URL}/categorias/subcategorias', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -201,7 +202,7 @@ const AdminCategories = () => {
 
   const handleEditSubcategory = async (updatedSubcategory: Subcategoria) => {
     try {
-      const resp = await fetch(`http://localhost:4000/categorias/subcategorias/${updatedSubcategory.id}`, {
+      const resp = await fetch(`${API_BASE_URL}/categorias/subcategorias/${updatedSubcategory.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -222,7 +223,7 @@ const AdminCategories = () => {
   const handleDeleteSubcategory = async () => {
     if (!deleteTarget) return;
     try {
-      const resp = await fetch(`http://localhost:4000/categorias/subcategorias/${deleteTarget.id}`, {
+      const resp = await fetch(`${API_BASE_URL}/categorias/subcategorias/${deleteTarget.id}`, {
         method: 'DELETE'
       });
       if (!resp.ok) throw new Error();

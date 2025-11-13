@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_BASE_URL } from "@/lib/utils";
 
 interface Service {
   id: string;
@@ -65,7 +66,7 @@ const PartnershipServicesDialog = ({
 
   const fetchServices = async () => {
     try {
-      const resp = await fetch('http://localhost:4000/servicos');
+      const resp = await fetch(`${API_BASE_URL}/servicos');
       if (!resp.ok) {
         const errorData = await resp.json().catch(() => ({ error: 'Erro ao carregar serviços' }));
         throw new Error(errorData.error || 'Erro ao carregar serviços');
@@ -87,7 +88,7 @@ const PartnershipServicesDialog = ({
   const fetchPartnershipServices = async () => {
     try {
       setLoading(true);
-      const resp = await fetch(`http://localhost:4000/parcerias/${partnershipId}/servicos`);
+      const resp = await fetch(`${API_BASE_URL}/parcerias/${partnershipId}/servicos`);
       if (!resp.ok) {
         const errorData = await resp.json().catch(() => ({ error: 'Erro ao carregar serviços da parceria' }));
         throw new Error(errorData.error || 'Erro ao carregar serviços da parceria');
@@ -124,7 +125,7 @@ const PartnershipServicesDialog = ({
     }
 
     try {
-      const resp = await fetch(`http://localhost:4000/parcerias/${partnershipId}/servicos`, {
+      const resp = await fetch(`${API_BASE_URL}/parcerias/${partnershipId}/servicos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -159,7 +160,7 @@ const PartnershipServicesDialog = ({
 
   const handleRemoveService = async (servicoId: string) => {
     try {
-      const resp = await fetch(`http://localhost:4000/parcerias/${partnershipId}/servicos/${servicoId}`, {
+      const resp = await fetch(`${API_BASE_URL}/parcerias/${partnershipId}/servicos/${servicoId}`, {
         method: 'DELETE',
       });
 

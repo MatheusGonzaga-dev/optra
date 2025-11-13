@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 // Dados agora virão do backend
 import { FileText, User, Calendar, Clock, BarChart3 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { API_BASE_URL } from "@/lib/utils";
 
 const AdminAppointmentHistory = () => {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ const AdminAppointmentHistory = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const resp = await fetch('http://localhost:4000/atendimentos/historico');
+        const resp = await fetch(`${API_BASE_URL}/atendimentos/historico`);
         const data = await resp.json();
         setRecords(Array.isArray(data) ? data : []);
       } catch (e) {

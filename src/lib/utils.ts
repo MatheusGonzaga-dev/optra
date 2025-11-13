@@ -6,4 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Configuração centralizada da API
-export const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+// Se VITE_API_URL não estiver configurada, usa URL relativa (mesmo domínio)
+// Isso permite usar /api quando tudo está na Vercel
+export const API_BASE_URL = import.meta.env.VITE_API_URL 
+  ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000');

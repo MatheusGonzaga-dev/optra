@@ -29,6 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import { permissionMatrix, actionColumns } from "@/config/permissionMatrix";
+import { API_BASE_URL } from "@/lib/utils";
 
 interface Group {
   id: string;
@@ -50,8 +51,6 @@ interface GroupPermission {
   grupo_id: string;
   permissao_id: string;
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 export default function Groups() {
   const [groups, setGroups] = useState<Group[]>([]);

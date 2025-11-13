@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import AddReceivableDialog from "@/components/AddReceivableDialog";
 import EditReceivableDialog from "@/components/EditReceivableDialog";
 import { Badge } from "@/components/ui/badge";
+import { API_BASE_URL } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,12 +72,12 @@ const AdminReceivables = () => {
   const fetchReceivables = async () => {
     try {
       setLoading(true);
-      const resp = await fetch('http://localhost:4000/contas-receber');
+      const resp = await fetch(`${API_BASE_URL}/contas-receber');
       if (!resp.ok) throw new Error('Erro ao buscar contas a receber');
       const data = await resp.json();
 
       // Buscar pacientes para obter os nomes
-      const pacientesResp = await fetch('http://localhost:4000/pacientes');
+      const pacientesResp = await fetch(`${API_BASE_URL}/pacientes');
       const pacientesData = pacientesResp.ok ? await pacientesResp.json() : [];
       const pacientesMap = new Map(pacientesData.map((p: any) => [p.id, p.nome_completo]));
 
@@ -112,7 +113,7 @@ const AdminReceivables = () => {
 
   const handleAddReceivable = async (receivable: Omit<Receivable, "id">) => {
     try {
-      const resp = await fetch('http://localhost:4000/contas-receber', {
+      const resp = await fetch(`${API_BASE_URL}/contas-receber', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(receivable),
@@ -140,7 +141,7 @@ const AdminReceivables = () => {
 
   const handleEditReceivable = async (updatedReceivable: Receivable) => {
     try {
-      const resp = await fetch(`http://localhost:4000/contas-receber/${updatedReceivable.id}`, {
+      const resp = await fetch(`${API_BASE_URL}/contas-receber/${updatedReceivable.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedReceivable),
@@ -166,7 +167,7 @@ const AdminReceivables = () => {
   const handleDeleteConfirm = async () => {
     if (selectedReceivable) {
       try {
-        const resp = await fetch(`http://localhost:4000/contas-receber/${selectedReceivable.id}`, {
+        const resp = await fetch(`${API_BASE_URL}/contas-receber/${selectedReceivable.id}`, {
           method: 'DELETE',
         });
         if (!resp.ok) {

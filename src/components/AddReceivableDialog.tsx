@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { API_BASE_URL } from "@/lib/utils";
 import {
   Tabs,
   TabsContent,
@@ -170,7 +171,7 @@ const AddReceivableDialog = ({ open, onOpenChange, onSave }: AddReceivableDialog
   const fetchPacientes = async () => {
     try {
       setLoadingPacientes(true);
-      const resp = await fetch('http://localhost:4000/pacientes');
+      const resp = await fetch(`${API_BASE_URL}/pacientes');
       if (!resp.ok) throw new Error('Erro ao buscar pacientes');
       const data = await resp.json();
       setPacientes(data || []);
@@ -184,7 +185,7 @@ const AddReceivableDialog = ({ open, onOpenChange, onSave }: AddReceivableDialog
   const fetchCategorias = async () => {
     try {
       setLoadingCategorias(true);
-      const resp = await fetch('http://localhost:4000/categorias?tipo=RECEITA');
+      const resp = await fetch(`${API_BASE_URL}/categorias?tipo=RECEITA');
       if (!resp.ok) throw new Error('Erro ao buscar categorias');
       const data = await resp.json();
       setCategorias(data || []);
@@ -197,7 +198,7 @@ const AddReceivableDialog = ({ open, onOpenChange, onSave }: AddReceivableDialog
 
   const fetchSubcategorias = async (categoriaId: string) => {
     try {
-      const resp = await fetch(`http://localhost:4000/categorias/${categoriaId}/subcategorias`);
+      const resp = await fetch(`${API_BASE_URL}/categorias/${categoriaId}/subcategorias`);
       if (!resp.ok) throw new Error('Erro ao buscar subcategorias');
       const data = await resp.json();
       setSubcategorias(data || []);
@@ -210,7 +211,7 @@ const AddReceivableDialog = ({ open, onOpenChange, onSave }: AddReceivableDialog
   const fetchProximoNumero = async (especie: string) => {
     try {
       setLoadingNumero(true);
-      const response = await fetch(`http://localhost:4000/contas-receber/proximo-numero?especie_documento=${especie}`);
+      const response = await fetch(`${API_BASE_URL}/contas-receber/proximo-numero?especie_documento=${especie}`);
       if (!response.ok) throw new Error('Erro ao buscar próximo número');
       const data = await response.json();
       setFormData(prev => ({ ...prev, numero_documento: data.proximo_numero }));

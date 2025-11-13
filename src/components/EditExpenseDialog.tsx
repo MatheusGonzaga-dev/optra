@@ -39,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { API_BASE_URL } from "@/lib/utils";
 import {
   Tabs,
   TabsContent,
@@ -160,7 +161,7 @@ const EditExpenseDialog = ({ open, onOpenChange, expense, onEdit }: EditExpenseD
   const fetchCategorias = async () => {
     try {
       setLoadingCategorias(true);
-      const response = await fetch('http://localhost:4000/categorias?tipo=DESPESA');
+      const response = await fetch(`${API_BASE_URL}/categorias?tipo=DESPESA');
       if (!response.ok) throw new Error('Erro ao buscar categorias');
       const data = await response.json();
       setCategorias(data || []);
@@ -173,7 +174,7 @@ const EditExpenseDialog = ({ open, onOpenChange, expense, onEdit }: EditExpenseD
 
   const fetchSubcategorias = async (categoriaId: string) => {
     try {
-      const response = await fetch(`http://localhost:4000/categorias/${categoriaId}/subcategorias`);
+      const response = await fetch(`${API_BASE_URL}/categorias/${categoriaId}/subcategorias`);
       if (!response.ok) throw new Error('Erro ao buscar subcategorias');
       const data = await response.json();
       setSubcategorias(data || []);

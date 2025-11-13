@@ -17,6 +17,7 @@ import {
 import AddPartnershipDialog from "@/components/AddPartnershipDialog";
 import EditPartnershipDialog from "@/components/EditPartnershipDialog";
 import PartnershipServicesDialog from "@/components/PartnershipServicesDialog";
+import { API_BASE_URL } from "@/lib/utils";
 
 interface Partnership {
   id: string;
@@ -40,7 +41,7 @@ const AdminPartnerships = () => {
     const fetchPartnerships = async () => {
       try {
         setLoading(true);
-        const resp = await fetch('http://localhost:4000/parcerias');
+        const resp = await fetch(`${API_BASE_URL}/parcerias');
         if (!resp.ok) {
           const errorData = await resp.json().catch(() => ({ error: 'Erro ao carregar parcerias' }));
           throw new Error(errorData.error || 'Erro ao carregar parcerias');
@@ -73,7 +74,7 @@ const AdminPartnerships = () => {
 
   const handleAddPartnership = async (partnership: Omit<Partnership, "id">) => {
     try {
-      const resp = await fetch('http://localhost:4000/parcerias', {
+      const resp = await fetch(`${API_BASE_URL}/parcerias', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -109,7 +110,7 @@ const AdminPartnerships = () => {
 
   const handleEditPartnership = async (updatedPartnership: Partnership) => {
     try {
-      const resp = await fetch(`http://localhost:4000/parcerias/${updatedPartnership.id}`, {
+      const resp = await fetch(`${API_BASE_URL}/parcerias/${updatedPartnership.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -141,7 +142,7 @@ const AdminPartnerships = () => {
   const handleDeleteConfirm = async () => {
     if (!selectedPartnership) return;
     try {
-      const resp = await fetch(`http://localhost:4000/parcerias/${selectedPartnership.id}`, {
+      const resp = await fetch(`${API_BASE_URL}/parcerias/${selectedPartnership.id}`, {
         method: 'DELETE',
       });
       if (!resp.ok) throw new Error('Erro ao remover parceria');

@@ -28,6 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/lib/utils";
 
 const formSchema = z.object({
   name: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
@@ -74,7 +75,7 @@ const NewPatient = () => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const resp = await fetch('http://localhost:4000/servicos');
+        const resp = await fetch(`${API_BASE_URL}/servicos');
         const data = await resp.json();
         setServices((data || []).map((s: any) => ({ id: s.id, nome: s.nome, valor: Number(s.valor) })));
       } catch { /* ignore */ }
@@ -135,7 +136,7 @@ const NewPatient = () => {
         }
       });
 
-      const response = await fetch('http://localhost:4000/pacientes', {
+      const response = await fetch(`${API_BASE_URL}/pacientes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -185,7 +186,7 @@ const NewPatient = () => {
             cadastrado_por_id: usuario?.id,
           };
 
-          const filaResponse = await fetch('http://localhost:4000/fila', {
+          const filaResponse = await fetch(`${API_BASE_URL}/fila', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { API_BASE_URL } from "@/lib/utils";
 
 interface StaffMember {
   id: string;
@@ -68,8 +69,6 @@ interface Group {
   nome: string;
   descricao: string | null;
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 const AdminAccess = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);

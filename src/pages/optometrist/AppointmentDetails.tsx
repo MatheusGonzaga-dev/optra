@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Printer, FileDown, User, History, Loader2, AlertCircle, ClipboardCheck } from "lucide-react";
 import PrescriptionView from "@/components/PrescriptionView";
 import type { PrescriptionData } from "@/components/PrescriptionView";
+import { API_BASE_URL } from "@/lib/utils";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 const formatProcedure = (value?: string | null) =>
   value ? value.replace(/_/g, " ").toLowerCase() : "—";
 

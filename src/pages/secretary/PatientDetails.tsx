@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast as sonnerToast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { API_BASE_URL } from "@/lib/utils";
 
 export default function PatientDetails() {
   const { id } = useParams();
@@ -65,7 +66,7 @@ export default function PatientDetails() {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const resp = await fetch('http://localhost:4000/servicos');
+        const resp = await fetch(`${API_BASE_URL}/servicos`);
         const data = await resp.json();
         setServices((data || []).map((s: any) => ({
           id: s.id,
@@ -84,13 +85,13 @@ export default function PatientDetails() {
     const fetchPatient = async () => {
       try {
         setLoading(true);
-        const resp = await fetch(`http://localhost:4000/pacientes/${id}`);
+        const resp = await fetch(`${API_BASE_URL}/pacientes/${id}`);
         if (!resp.ok) throw new Error('Erro ao buscar paciente');
         const data = await resp.json();
         setPatient(data);
         
         // Buscar histórico de atendimentos deste paciente
-        const prontuariosResp = await fetch(`http://localhost:4000/atendimentos/historico`);
+        const prontuariosResp = await fetch(`${API_BASE_URL}/atendimentos/historico`);
         if (prontuariosResp.ok) {
           const todosAtendimentos = await prontuariosResp.json();
           const prontuarios = todosAtendimentos.filter((p: any) => p.paciente?.id === id);
@@ -99,7 +100,7 @@ export default function PatientDetails() {
           const prontuariosCompletos = await Promise.all(
             prontuarios.map(async (atend: any) => {
               try {
-                const prontResp = await fetch(`http://localhost:4000/atendimentos/prontuarios?fila_id=${atend.id}`);
+                const prontResp = await fetch(`${API_BASE_URL}/atendimentos/prontuarios?fila_id=${atend.id}`);
                 if (prontResp.ok) {
                   const prontData = await prontResp.json();
                   return { ...atend, prontuario: Array.isArray(prontData) && prontData.length > 0 ? prontData[0] : null };
@@ -218,7 +219,7 @@ export default function PatientDetails() {
         filaData.cadastrado_por_id = usuario.id;
       }
 
-      const response = await fetch('http://localhost:4000/fila', {
+      const response = await fetch(`${API_BASE_URL}/fila', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(filaData),

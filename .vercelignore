@@ -1,5 +1,5 @@
 node_modules
-server
+server/node_modules
 database
 *.md
 .env
@@ -7,4 +7,4 @@ database
 .env.*.local
 .git
 .gitignore
-
+server/dist

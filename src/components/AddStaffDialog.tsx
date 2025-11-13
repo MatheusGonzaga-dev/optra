@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, User, Briefcase, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/lib/utils";
 
 interface AddStaffDialogProps {
   open: boolean;
@@ -28,8 +29,6 @@ interface Group {
   nome: string;
   descricao: string | null;
 }
-
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 const AddStaffDialog = ({ open, onOpenChange, onAdd }: AddStaffDialogProps) => {
   const [loading, setLoading] = useState(false);

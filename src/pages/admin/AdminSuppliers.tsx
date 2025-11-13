@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import AddSupplierDialog from "@/components/AddSupplierDialog";
 import EditSupplierDialog from "@/components/EditSupplierDialog";
 import { Badge } from "@/components/ui/badge";
+import { API_BASE_URL } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -58,7 +59,7 @@ const AdminSuppliers = () => {
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
-      const resp = await fetch('http://localhost:4000/fornecedores');
+      const resp = await fetch(`${API_BASE_URL}/fornecedores`);
       if (!resp.ok) throw new Error('Erro ao buscar fornecedores');
       const data = await resp.json();
       setSuppliers((data || []).map((s: any) => ({
@@ -84,7 +85,7 @@ const AdminSuppliers = () => {
 
   const handleAddSupplier = async (supplier: Omit<Supplier, "id">) => {
     try {
-      const resp = await fetch('http://localhost:4000/fornecedores', {
+      const resp = await fetch(`${API_BASE_URL}/fornecedores`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(supplier),
@@ -104,7 +105,7 @@ const AdminSuppliers = () => {
 
   const handleEditSupplier = async (updatedSupplier: Supplier) => {
     try {
-      const resp = await fetch(`http://localhost:4000/fornecedores/${updatedSupplier.id}`, {
+      const resp = await fetch(`${API_BASE_URL}/fornecedores/${updatedSupplier.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedSupplier),
@@ -130,7 +131,7 @@ const AdminSuppliers = () => {
   const handleDeleteConfirm = async () => {
     if (selectedSupplier) {
       try {
-        const resp = await fetch(`http://localhost:4000/fornecedores/${selectedSupplier.id}`, {
+        const resp = await fetch(`${API_BASE_URL}/fornecedores/${selectedSupplier.id}`, {
           method: 'DELETE',
         });
         if (!resp.ok) {

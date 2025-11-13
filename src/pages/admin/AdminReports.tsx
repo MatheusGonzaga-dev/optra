@@ -12,6 +12,7 @@ import { TrendingUp, Users, DollarSign, Calendar, Download, BarChart3, Loader2, 
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { toast } from "sonner";
 import { useSearchParams } from "react-router-dom";
+import { API_BASE_URL } from "@/lib/utils";
 
 type PartnershipAttendance = {
   id: string;
@@ -83,7 +84,7 @@ const AdminReports = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const resp = await fetch('http://localhost:4000/atendimentos/historico');
+        const resp = await fetch(`${API_BASE_URL}/atendimentos/historico`);
         const data = await resp.json();
         setRecords(Array.isArray(data) ? data : []);
       } catch (e) {
@@ -98,7 +99,7 @@ const AdminReports = () => {
   useEffect(() => {
     const loadPartnershipReport = async () => {
       try {
-        const response = await fetch('http://localhost:4000/parcerias/relatorio');
+        const response = await fetch(`${API_BASE_URL}/parcerias/relatorio`);
         if (!response.ok) {
           throw new Error('Erro ao carregar relatório de parcerias');
         }

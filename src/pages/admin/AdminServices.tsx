@@ -6,6 +6,7 @@ import { Package, Plus, Edit, Trash2, DollarSign, TrendingDown } from "lucide-re
 import AddServiceDialog from "@/components/AddServiceDialog";
 import EditServiceDialog from "@/components/EditServiceDialog";
 import { toast } from "sonner";
+import { API_BASE_URL } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,7 +38,7 @@ const AdminServices = () => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const resp = await fetch('http://localhost:4000/servicos');
+        const resp = await fetch(`${API_BASE_URL}/servicos');
         const data = await resp.json();
         setServices((data || []).map((s: any) => ({
           id: s.id,
@@ -56,7 +57,7 @@ const AdminServices = () => {
 
   const handleAddService = async (service: Omit<Service, "id">) => {
     try {
-      const resp = await fetch('http://localhost:4000/servicos', {
+      const resp = await fetch(`${API_BASE_URL}/servicos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -90,7 +91,7 @@ const AdminServices = () => {
 
   const handleEditService = async (updatedService: Service) => {
     try {
-      const resp = await fetch(`http://localhost:4000/servicos/${updatedService.id}`, {
+      const resp = await fetch(`${API_BASE_URL}/servicos/${updatedService.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -117,7 +118,7 @@ const AdminServices = () => {
   const handleDeleteConfirm = async () => {
     if (!selectedService) return;
     try {
-      const resp = await fetch(`http://localhost:4000/servicos/${selectedService.id}`, { method: 'DELETE' });
+      const resp = await fetch(`${API_BASE_URL}/servicos/${selectedService.id}`, { method: 'DELETE' });
       if (!resp.ok) throw new Error();
       setServices(services.filter(s => s.id !== selectedService.id));
       toast.success("Serviço excluído com sucesso!");

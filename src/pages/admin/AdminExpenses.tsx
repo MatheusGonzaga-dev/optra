@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import AddExpenseDialog from "@/components/AddExpenseDialog";
 import EditExpenseDialog from "@/components/EditExpenseDialog";
 import { Badge } from "@/components/ui/badge";
+import { API_BASE_URL } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -69,7 +70,7 @@ const AdminExpenses = () => {
   const fetchExpenses = async () => {
     try {
       setLoading(true);
-      const resp = await fetch('http://localhost:4000/contas-pagar');
+      const resp = await fetch(`${API_BASE_URL}/contas-pagar');
       if (!resp.ok) throw new Error('Erro ao buscar contas a pagar');
       const data = await resp.json();
       setExpenses((data || []).map((e: any) => ({
@@ -102,7 +103,7 @@ const AdminExpenses = () => {
 
   const handleAddExpense = async (expense: Omit<Expense, "id">) => {
     try {
-      const resp = await fetch('http://localhost:4000/contas-pagar', {
+      const resp = await fetch(`${API_BASE_URL}/contas-pagar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(expense),
@@ -130,7 +131,7 @@ const AdminExpenses = () => {
 
   const handleEditExpense = async (updatedExpense: Expense) => {
     try {
-      const resp = await fetch(`http://localhost:4000/contas-pagar/${updatedExpense.id}`, {
+      const resp = await fetch(`${API_BASE_URL}/contas-pagar/${updatedExpense.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedExpense),
@@ -156,7 +157,7 @@ const AdminExpenses = () => {
   const handleDeleteConfirm = async () => {
     if (selectedExpense) {
       try {
-        const resp = await fetch(`http://localhost:4000/contas-pagar/${selectedExpense.id}`, {
+        const resp = await fetch(`${API_BASE_URL}/contas-pagar/${selectedExpense.id}`, {
           method: 'DELETE',
         });
         if (!resp.ok) {
