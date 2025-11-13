@@ -9,6 +9,7 @@ import { ArrowLeft, Users, Search, Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
+import { API_BASE_URL } from "@/lib/utils";
 
 interface QueueItem {
   id: string;
@@ -41,9 +42,9 @@ const PatientQueue = () => {
     try {
       setLoading(true);
       // Buscar AGUARDANDO
-      const responseAguardando = await fetch('http://localhost:4000/fila?status=AGUARDANDO');
+      const responseAguardando = await fetch(`${API_BASE_URL}/fila?status=AGUARDANDO`);
       // Buscar EM_ATENDIMENTO
-      const responseEmAtendimento = await fetch('http://localhost:4000/fila?status=EM_ATENDIMENTO');
+      const responseEmAtendimento = await fetch(`${API_BASE_URL}/fila?status=EM_ATENDIMENTO`);
       
       if (!responseAguardando.ok || !responseEmAtendimento.ok) throw new Error('Erro ao buscar fila');
       
@@ -93,7 +94,7 @@ const PatientQueue = () => {
   const handleCallPatient = async (patientId: string) => {
     try {
       // Atualizar status para EM_ATENDIMENTO
-      const response = await fetch(`http://localhost:4000/fila/${patientId}/chamar`, {
+      const response = await fetch(`${API_BASE_URL}/fila/${patientId}/chamar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ optometrista_id: usuario?.id }),

@@ -11,6 +11,8 @@ const ConfigError = () => {
   if (!import.meta.env.VITE_SUPABASE_ANON_KEY) {
     missingVars.push("VITE_SUPABASE_ANON_KEY");
   }
+  
+  // VITE_API_URL é opcional - não adiciona à lista de obrigatórias
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4">
@@ -57,8 +59,22 @@ const ConfigError = () => {
               <div className="space-y-1">
                 <div>VITE_SUPABASE_URL=https://seu-projeto.supabase.co</div>
                 <div>VITE_SUPABASE_ANON_KEY=sua-anon-key-aqui</div>
-                <div>VITE_API_URL=https://seu-backend-url.com</div>
+                <div className="text-gray-500"># VITE_API_URL é opcional (veja instruções abaixo)</div>
               </div>
+            </div>
+            
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="text-sm font-semibold text-yellow-800 mb-2">
+                📌 Sobre VITE_API_URL (Opcional):
+              </p>
+              <p className="text-xs text-yellow-700 mb-2">
+                Esta variável só é necessária se você já fez deploy do backend. Se ainda não fez:
+              </p>
+              <ul className="text-xs text-yellow-700 list-disc list-inside space-y-1">
+                <li>Você pode deixar sem configurar por enquanto</li>
+                <li>O sistema usará <code className="bg-yellow-100 px-1 rounded">http://localhost:4000</code> como padrão</li>
+                <li>Funcionalidades que dependem do backend não funcionarão até você fazer o deploy</li>
+              </ul>
             </div>
 
             <div className="flex gap-2 flex-wrap">

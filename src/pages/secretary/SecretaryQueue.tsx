@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
+import { API_BASE_URL } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,9 +68,9 @@ const SecretaryQueue = () => {
     try {
       setLoading(true);
       // Buscar AGUARDANDO
-      const responseAguardando = await fetch('http://localhost:4000/fila?status=AGUARDANDO');
+      const responseAguardando = await fetch(`${API_BASE_URL}/fila?status=AGUARDANDO`);
       // Buscar EM_ATENDIMENTO
-      const responseEmAtendimento = await fetch('http://localhost:4000/fila?status=EM_ATENDIMENTO');
+      const responseEmAtendimento = await fetch(`${API_BASE_URL}/fila?status=EM_ATENDIMENTO`);
       
       if (!responseAguardando.ok || !responseEmAtendimento.ok) throw new Error('Erro ao buscar fila');
       
@@ -118,7 +119,7 @@ const SecretaryQueue = () => {
     const newPosition = currentItem.posicao - 1;
 
     try {
-      const response = await fetch(`http://localhost:4000/fila/${id}/posicao`, {
+      const response = await fetch(`${API_BASE_URL}/fila/${id}/posicao`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nova_posicao: newPosition }),
@@ -142,7 +143,7 @@ const SecretaryQueue = () => {
     const newPosition = currentItem.posicao + 1;
 
     try {
-      const response = await fetch(`http://localhost:4000/fila/${id}/posicao`, {
+      const response = await fetch(`${API_BASE_URL}/fila/${id}/posicao`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nova_posicao: newPosition }),
@@ -167,7 +168,7 @@ const SecretaryQueue = () => {
     if (!editingPatient) return;
 
     try {
-      const response = await fetch(`http://localhost:4000/fila/${editingPatient.id}`, {
+      const response = await fetch(`${API_BASE_URL}/fila/${editingPatient.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -198,7 +199,7 @@ const SecretaryQueue = () => {
     if (!confirm('Tem certeza que deseja remover este paciente da fila?')) return;
 
     try {
-      const response = await fetch(`http://localhost:4000/fila/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/fila/${id}`, {
         method: 'DELETE',
       });
 
@@ -215,7 +216,7 @@ const SecretaryQueue = () => {
   const handleCallPatient = async (patientId: string) => {
     try {
       // Atualizar status para EM_ATENDIMENTO
-      const response = await fetch(`http://localhost:4000/fila/${patientId}/chamar`, {
+      const response = await fetch(`${API_BASE_URL}/fila/${patientId}/chamar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ optometrista_id: usuario?.id }),

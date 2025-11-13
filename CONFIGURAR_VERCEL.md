@@ -34,9 +34,13 @@ Ambientes: Production, Preview, Development
 
 ```
 Nome: VITE_API_URL
-Valor: https://seu-backend-url.com
+Valor: https://seu-backend-url.com (ou deixe sem configurar se ainda não fez deploy do backend)
 Ambientes: Production, Preview, Development
 ```
+
+⚠️ **IMPORTANTE:** `VITE_API_URL` é **OPCIONAL**. Se você ainda não fez deploy do backend, pode deixar sem configurar. O sistema usará `http://localhost:4000` como padrão (mas não funcionará em produção até você fazer deploy do backend).
+
+📖 **Veja o guia completo:** `COMO_CONFIGURAR_BACKEND.md`
 
 ### Passo 3: Onde Encontrar os Valores
 

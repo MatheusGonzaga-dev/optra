@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon, Save, Edit, Printer, FileDown, ArrowLeft, Loader2, FileText } from "lucide-react";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, API_BASE_URL } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -81,7 +81,7 @@ const PatientAttendance = () => {
   useEffect(() => {
     const fetchPartnerships = async () => {
       try {
-        const resp = await fetch('http://localhost:4000/parcerias');
+        const resp = await fetch(`${API_BASE_URL}/parcerias`);
         const data = await resp.json();
         setPartnerships((data || []).map((p: any) => ({ id: p.id, nome: p.nome })));
       } catch {
@@ -98,7 +98,7 @@ const PatientAttendance = () => {
       
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:4000/fila/${id}`);
+        const response = await fetch(`${API_BASE_URL}/fila/${id}`);
         if (!response.ok) throw new Error('Erro ao buscar dados do atendimento');
         const data = await response.json();
         setFilaData(data);
@@ -111,7 +111,7 @@ const PatientAttendance = () => {
         };
         
         // Buscar serviço pelo nome para ter o ID
-        const servResp = await fetch('http://localhost:4000/servicos');
+        const servResp = await fetch(`${API_BASE_URL}/servicos`);
         const servicos = await servResp.json();
         const nomeServico = tipoToNome[data.tipo_atendimento] || data.tipo_atendimento;
         
@@ -178,7 +178,7 @@ const PatientAttendance = () => {
 
       try {
         console.log('Buscando desconto para parceria:', serviceOrder.partnershipId, 'serviço:', serviceOrder.serviceId);
-        const resp = await fetch(`http://localhost:4000/parcerias/${serviceOrder.partnershipId}/servicos`);
+        const resp = await fetch(`${API_BASE_URL}/parcerias/${serviceOrder.partnershipId}/servicos`);
         if (!resp.ok) {
           console.error('Erro ao buscar vínculos:', resp.status);
           return;
@@ -243,7 +243,7 @@ const PatientAttendance = () => {
           returnDate: returnDate ? returnDate.toISOString() : undefined
         });
         
-        const prontuarioResp = await fetch(`http://localhost:4000/atendimentos/${id}/prontuario`, {
+        const prontuarioResp = await fetch(`${API_BASE_URL}/atendimentos/${id}/prontuario`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -265,7 +265,6 @@ const PatientAttendance = () => {
 
         // Salvar exames
         console.log('📝 Salvando exames:', exams);
-        const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
         for (const exam of exams) {
           if (exam.nome_exame && exam.resultado) {
             const examResp = await fetch(`${API_BASE_URL}/exames/${id}`, {
@@ -293,7 +292,7 @@ const PatientAttendance = () => {
         const desconto = Math.max(0, serviceOrder.discount);
         const acrescimo = Math.max(0, serviceOrder.addition);
         const total = subtotal - desconto + acrescimo;
-        await fetch(`http://localhost:4000/atendimentos/${id}/os`, {
+        await fetch(`${API_BASE_URL}/atendimentos/${id}/os`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -313,7 +312,7 @@ const PatientAttendance = () => {
       if (!isDraft) {
         // Marcar como atendido e voltar para fila
         if (id) {
-          await fetch(`http://localhost:4000/fila/${id}/finalizar`, { method: 'POST' });
+          await fetch(`${API_BASE_URL}/fila/${id}/finalizar`, { method: 'POST' });
         }
         navigate(getBackRoute());
       }
@@ -964,7 +963,7 @@ const PatientAttendance = () => {
                               // Se não tiver serviceId, buscar baseado no filaData
                               if (!currentServiceId && filaData) {
                                 console.warn('⚠️ ServiceId não encontrado, buscando novamente...');
-                                const servResp = await fetch('http://localhost:4000/servicos');
+                                const servResp = await fetch(`${API_BASE_URL}/servicos`);
                                 const servicos = await servResp.json();
                                 const tipoToNome: Record<string, string> = {
                                   'CONSULTA_COMPLETA': 'Consulta Completa',
@@ -1015,7 +1014,7 @@ const PatientAttendance = () => {
                                 return;
                               }
                               
-                              const resp = await fetch(`http://localhost:4000/parcerias/${newPartnershipId}/servicos`);
+                              const resp = await fetch(`${API_BASE_URL}/parcerias/${newPartnershipId}/servicos`);
                               if (!resp.ok) {
                                 console.error('Erro ao buscar vínculos:', resp.status);
                                 toast.error('Erro ao buscar descontos da parceria');
