@@ -66,7 +66,7 @@ const PartnershipServicesDialog = ({
 
   const fetchServices = async () => {
     try {
-      const resp = await fetch(`${API_BASE_URL}/servicos');
+      const resp = await fetch(`${API_BASE_URL}/servicos`);
       if (!resp.ok) {
         const errorData = await resp.json().catch(() => ({ error: 'Erro ao carregar serviços' }));
         throw new Error(errorData.error || 'Erro ao carregar serviços');

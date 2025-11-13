@@ -70,7 +70,7 @@ const AdminExpenses = () => {
   const fetchExpenses = async () => {
     try {
       setLoading(true);
-      const resp = await fetch(`${API_BASE_URL}/contas-pagar');
+      const resp = await fetch(`${API_BASE_URL}/contas-pagar`);
       if (!resp.ok) throw new Error('Erro ao buscar contas a pagar');
       const data = await resp.json();
       setExpenses((data || []).map((e: any) => ({
@@ -103,7 +103,7 @@ const AdminExpenses = () => {
 
   const handleAddExpense = async (expense: Omit<Expense, "id">) => {
     try {
-      const resp = await fetch(`${API_BASE_URL}/contas-pagar', {
+      const resp = await fetch(`${API_BASE_URL}/contas-pagar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(expense),

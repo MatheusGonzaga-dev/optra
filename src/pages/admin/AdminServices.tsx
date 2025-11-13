@@ -57,7 +57,7 @@ const AdminServices = () => {
 
   const handleAddService = async (service: Omit<Service, "id">) => {
     try {
-      const resp = await fetch(`${API_BASE_URL}/servicos', {
+      const resp = await fetch(`${API_BASE_URL}/servicos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -171,7 +171,7 @@ const AddExpenseDialog = ({ open, onOpenChange, onAdd }: AddExpenseDialogProps) 
   const fetchCategorias = async () => {
     try {
       setLoadingCategorias(true);
-      const response = await fetch(`${API_BASE_URL}/categorias?tipo=DESPESA');
+      const response = await fetch(`${API_BASE_URL}/categorias?tipo=DESPESA`);
       if (!response.ok) throw new Error('Erro ao buscar categorias');
       const data = await response.json();
       setCategorias(data || []);
