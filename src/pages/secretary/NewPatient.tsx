@@ -136,7 +136,7 @@ const NewPatient = () => {
         }
       });
 
-      const response = await fetch(`${API_BASE_URL}/pacientes', {
+      const response = await fetch(`${API_BASE_URL}/pacientes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -186,7 +186,7 @@ const NewPatient = () => {
             cadastrado_por_id: usuario?.id,
           };
 
-          const filaResponse = await fetch(`${API_BASE_URL}/fila', {
+          const filaResponse = await fetch(`${API_BASE_URL}/fila`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

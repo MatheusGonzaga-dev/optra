@@ -219,7 +219,7 @@ export default function PatientDetails() {
         filaData.cadastrado_por_id = usuario.id;
       }
 
-      const response = await fetch(`${API_BASE_URL}/fila', {
+      const response = await fetch(`${API_BASE_URL}/fila`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(filaData),

@@ -167,7 +167,7 @@ export default function PatientList() {
     const fetchPacientes = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`${API_BASE_URL}/pacientes');
+        const response = await fetch(`${API_BASE_URL}/pacientes`);
         if (!response.ok) throw new Error('Erro ao buscar pacientes');
         const data = await response.json();
         setPacientes(data);
@@ -214,7 +214,7 @@ export default function PatientList() {
 
       console.log('Dados enviados para o backend:', pacienteData);
 
-      const response = await fetch(`${API_BASE_URL}/pacientes', {
+      const response = await fetch(`${API_BASE_URL}/pacientes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -264,7 +264,7 @@ export default function PatientList() {
             cadastrado_por_id: usuario?.id,
           };
 
-          const filaResponse = await fetch(`${API_BASE_URL}/fila', {
+          const filaResponse = await fetch(`${API_BASE_URL}/fila`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

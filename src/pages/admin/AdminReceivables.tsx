@@ -72,12 +72,12 @@ const AdminReceivables = () => {
   const fetchReceivables = async () => {
     try {
       setLoading(true);
-      const resp = await fetch(`${API_BASE_URL}/contas-receber');
+      const resp = await fetch(`${API_BASE_URL}/contas-receber`);
       if (!resp.ok) throw new Error('Erro ao buscar contas a receber');
       const data = await resp.json();
 
       // Buscar pacientes para obter os nomes
-      const pacientesResp = await fetch(`${API_BASE_URL}/pacientes');
+      const pacientesResp = await fetch(`${API_BASE_URL}/pacientes`);
       const pacientesData = pacientesResp.ok ? await pacientesResp.json() : [];
       const pacientesMap = new Map(pacientesData.map((p: any) => [p.id, p.nome_completo]));
 
@@ -113,7 +113,7 @@ const AdminReceivables = () => {
 
   const handleAddReceivable = async (receivable: Omit<Receivable, "id">) => {
     try {
-      const resp = await fetch(`${API_BASE_URL}/contas-receber', {
+      const resp = await fetch(`${API_BASE_URL}/contas-receber`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(receivable),

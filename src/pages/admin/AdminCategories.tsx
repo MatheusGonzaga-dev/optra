@@ -121,7 +121,7 @@ const AdminCategories = () => {
 
   const handleAddCategory = async (category: Omit<Categoria, "id">) => {
     try {
-      const resp = await fetch(`${API_BASE_URL}/categorias', {
+      const resp = await fetch(`${API_BASE_URL}/categorias`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -182,7 +182,7 @@ const AdminCategories = () => {
 
   const handleAddSubcategory = async (subcategory: Omit<Subcategoria, "id"> & { categoria_id: string }) => {
     try {
-      const resp = await fetch(`${API_BASE_URL}/categorias/subcategorias', {
+      const resp = await fetch(`${API_BASE_URL}/categorias/subcategorias`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

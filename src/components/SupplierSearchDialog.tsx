@@ -42,7 +42,7 @@ const SupplierSearchDialog = ({ open, onOpenChange, onSelect }: SupplierSearchDi
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/fornecedores');
+      const response = await fetch(`${API_BASE_URL}/fornecedores`);
       if (!response.ok) {
         throw new Error('Erro ao buscar fornecedores');
       }

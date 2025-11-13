@@ -156,7 +156,7 @@ const EditReceivableDialog = ({ open, onOpenChange, receivable, onSave }: EditRe
   const fetchPacientes = async () => {
     try {
       setLoadingPacientes(true);
-      const resp = await fetch(`${API_BASE_URL}/pacientes');
+      const resp = await fetch(`${API_BASE_URL}/pacientes`);
       if (!resp.ok) throw new Error('Erro ao buscar pacientes');
       const data = await resp.json();
       setPacientes(data || []);
@@ -170,7 +170,7 @@ const EditReceivableDialog = ({ open, onOpenChange, receivable, onSave }: EditRe
   const fetchCategorias = async () => {
     try {
       setLoadingCategorias(true);
-      const resp = await fetch(`${API_BASE_URL}/categorias?tipo=RECEITA');
+      const resp = await fetch(`${API_BASE_URL}/categorias?tipo=RECEITA`);
       if (!resp.ok) throw new Error('Erro ao buscar categorias');
       const data = await resp.json();
       setCategorias(data || []);
