@@ -74,7 +74,7 @@ const AdminPartnerships = () => {
 
   const handleAddPartnership = async (partnership: Omit<Partnership, "id">) => {
     try {
-      const resp = await fetch(`${API_BASE_URL}/parcerias', {
+      const resp = await fetch(`${API_BASE_URL}/parcerias`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
