@@ -22,7 +22,16 @@ import { router as examesRouter } from './routes/exames.js';
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: '*', credentials: false }));
+// CORS configurado para aceitar requisições da Vercel e localhost
+app.use(cors({ 
+  origin: [
+    'https://optrasystem.vercel.app',
+    /^https:\/\/.*\.vercel\.app$/, // Aceita todos os previews da Vercel
+    'http://localhost:8080',
+    'http://localhost:5173', // Vite dev server alternativo
+  ],
+  credentials: false 
+}));
 app.use(express.json());
 app.use(morgan('dev'));
 
@@ -48,9 +57,15 @@ app.get('/', (_req, res) => {
 
 const PORT = Number(process.env.PORT || 4000);
 
-app.listen(PORT, () => {
-  // eslint-disable-next-line no-console
-  console.log(`[server] listening on http://localhost:${PORT}`);
-});
+// Só inicia o servidor se não estiver rodando como serverless function
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, () => {
+    // eslint-disable-next-line no-console
+    console.log(`[server] listening on http://localhost:${PORT}`);
+  });
+}
+
+// Exporta o app para uso como serverless function
+export default app;
 
 
