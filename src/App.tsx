@@ -5,10 +5,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Unauthorized from "./pages/Unauthorized";
+import ConfigError from "./pages/ConfigError";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminFinancial from "./pages/admin/AdminFinancial";
 import AdminAppointmentHistory from "./pages/admin/AdminAppointmentHistory";
@@ -38,17 +40,33 @@ import MetricDetails from "./pages/optometrist/MetricDetails";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/unauthorized" element={<Unauthorized />} />
+// Verificar se as variáveis de ambiente estão configuradas
+const checkEnvironment = () => {
+  // Em desenvolvimento, permite continuar mesmo sem variáveis
+  if (import.meta.env.DEV) {
+    return true;
+  }
+  // Em produção, verifica se está configurado
+  return isSupabaseConfigured();
+};
+
+const App = () => {
+  // Se não estiver configurado em produção, mostra página de erro
+  if (!checkEnvironment()) {
+    return <ConfigError />;
+  }
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/unauthorized" element={<Unauthorized />} />
             
             {/* Admin Routes */}
             <Route path="/admin/dashboard" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminDashboard /></ProtectedRoute>} />
@@ -93,6 +111,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
