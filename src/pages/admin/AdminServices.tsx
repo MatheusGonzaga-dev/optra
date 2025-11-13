@@ -38,7 +38,7 @@ const AdminServices = () => {
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const resp = await fetch(`${API_BASE_URL}/servicos');
+        const resp = await fetch(`${API_BASE_URL}/servicos`);
         const data = await resp.json();
         setServices((data || []).map((s: any) => ({
           id: s.id,
