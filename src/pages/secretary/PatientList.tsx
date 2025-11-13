@@ -955,7 +955,8 @@ export default function PatientList() {
                                 const adminPath = '/admin/patient';
                                 const secretaryPath = '/secretary/patient';
                                 const selectedPath = isAdmin ? adminPath : secretaryPath;
-                                const targetPath = `${selectedPath}/${patient.id}`;
+                                const patientId = patient.id;
+                                const targetPath = selectedPath + '/' + patientId;
                                 navigate(targetPath);
                               }}
                               className="text-xs"
