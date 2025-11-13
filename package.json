@@ -65,7 +65,8 @@
     "cors": "^2.8.5",
     "helmet": "^8.0.0",
     "morgan": "^1.10.0",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "@vercel/node": "^3.0.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
