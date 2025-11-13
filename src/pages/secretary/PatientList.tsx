@@ -288,7 +288,7 @@ export default function PatientList() {
     setIsDialogOpen(false);
     form.reset();
       
-      const updatedResponse = await fetch(`${API_BASE_URL}/pacientes');
+      const updatedResponse = await fetch(`${API_BASE_URL}/pacientes`);
       if (updatedResponse.ok) {
         const data = await updatedResponse.json();
         setPacientes(data);
