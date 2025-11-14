@@ -18,7 +18,7 @@ interface AddStaffDialogProps {
     cpf: string;
     phone: string;
     address: string;
-    role: "secretary" | "optometrist";
+    role?: "secretary" | "optometrist";
     groupId?: string;
     groupName?: string;
   }) => void;
@@ -46,7 +46,6 @@ const AddStaffDialog = ({ open, onOpenChange, onAdd }: AddStaffDialogProps) => {
     cidade: "",
     estado: "",
     // Dados profissionais
-    role: "" as "secretary" | "optometrist" | "",
     dataAdmissao: new Date().toISOString().split('T')[0],
     cargo: "",
     salario: "",
@@ -80,31 +79,18 @@ const AddStaffDialog = ({ open, onOpenChange, onAdd }: AddStaffDialogProps) => {
     e.preventDefault();
     
     // Validações básicas
-    if (!formData.name || !formData.cpf || !formData.email || !formData.password || !formData.role) {
+    if (!formData.name || !formData.cpf || !formData.email || !formData.password || !formData.grupoAcessoId) {
       toast.error("Preencha todos os campos obrigatórios (*)");
-      return;
-    }
-
-    // Validar CRM para optometrista
-    if (formData.role === 'optometrist' && (!formData.crm || !formData.estadoCrm)) {
-      toast.error("CRM e Estado do CRM são obrigatórios para Optometrista");
       return;
     }
 
     setLoading(true);
     
     try {
-      // Mapear role do frontend para perfil do backend
-      const perfilMap: Record<string, string> = {
-        'secretary': 'SECRETARIA',
-        'optometrist': 'OPTOMETRISTA'
-      };
-
       const payload: any = {
         nome_completo: formData.name,
         email: formData.email,
         senha: formData.password,
-        perfil: perfilMap[formData.role],
         telefone: formData.phone || null,
         cpf: formData.cpf || null,
         rg: formData.rg || null,
@@ -117,15 +103,11 @@ const AddStaffDialog = ({ open, onOpenChange, onAdd }: AddStaffDialogProps) => {
         data_admissao: formData.dataAdmissao || null,
         cargo: formData.cargo || null,
         salario: formData.salario ? Number(formData.salario) : null,
+        grupo_acesso_id: formData.grupoAcessoId,
       };
 
-      // Adicionar grupo de acesso se selecionado
-      if (formData.grupoAcessoId) {
-        payload.grupo_acesso_id = formData.grupoAcessoId;
-      }
-
-      // Adicionar CRM se for optometrista
-      if (formData.role === 'optometrist') {
+      // Adicionar CRM se fornecido
+      if (formData.crm && formData.estadoCrm) {
         payload.crm = formData.crm;
         payload.estado_crm = formData.estadoCrm;
       }
@@ -151,7 +133,7 @@ const AddStaffDialog = ({ open, onOpenChange, onAdd }: AddStaffDialogProps) => {
         cpf: formData.cpf,
         phone: formData.phone,
         address: formData.address,
-        role: formData.role,
+        role: "secretary" as "secretary" | "optometrist", // Mantido para compatibilidade
         groupId: formData.grupoAcessoId || undefined,
         groupName: formData.grupoAcessoId ? groups.find(g => g.id === formData.grupoAcessoId)?.nome : undefined,
       });
@@ -168,7 +150,6 @@ const AddStaffDialog = ({ open, onOpenChange, onAdd }: AddStaffDialogProps) => {
         cep: "",
         cidade: "",
         estado: "",
-        role: "" as "secretary" | "optometrist" | "",
         dataAdmissao: new Date().toISOString().split('T')[0],
         cargo: "",
         salario: "",
@@ -365,48 +346,42 @@ const AddStaffDialog = ({ open, onOpenChange, onAdd }: AddStaffDialogProps) => {
                 </div>
               </div>
 
-              {/* Campos específicos para Optometrista */}
-              {formData.role === 'optometrist' && (
-                <>
-                  <div className="border-t pt-4 mt-4">
-                    <h3 className="font-semibold mb-3 text-blue-600">Dados do Conselho (Obrigatório para Optometrista)</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="crm">CRM *</Label>
-                        <Input
-                          id="crm"
-                          value={formData.crm}
-                          onChange={(e) => setFormData({ ...formData, crm: e.target.value })}
-                          placeholder="Número do CRM"
-                          required={formData.role === 'optometrist'}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="estadoCrm">Estado do CRM *</Label>
-                        <Input
-                          id="estadoCrm"
-                          value={formData.estadoCrm}
-                          onChange={(e) => setFormData({ ...formData, estadoCrm: e.target.value.toUpperCase() })}
-                          placeholder="Ex: SP"
-                          maxLength={2}
-                          required={formData.role === 'optometrist'}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Sigla do estado (2 letras)
-                        </p>
-                      </div>
-                    </div>
+              {/* Campos opcionais para CRM */}
+              <div className="border-t pt-4 mt-4">
+                <h3 className="font-semibold mb-3 text-blue-600">Dados do Conselho (Opcional)</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="crm">CRM</Label>
+                    <Input
+                      id="crm"
+                      value={formData.crm}
+                      onChange={(e) => setFormData({ ...formData, crm: e.target.value })}
+                      placeholder="Número do CRM"
+                    />
                   </div>
-                </>
-              )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="estadoCrm">Estado do CRM</Label>
+                    <Input
+                      id="estadoCrm"
+                      value={formData.estadoCrm}
+                      onChange={(e) => setFormData({ ...formData, estadoCrm: e.target.value.toUpperCase() })}
+                      placeholder="Ex: SP"
+                      maxLength={2}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Sigla do estado (2 letras)
+                    </p>
+                  </div>
+                </div>
+              </div>
             </TabsContent>
 
             {/* Aba: Acesso ao Sistema */}
             <TabsContent value="acesso" className="space-y-4 mt-4">
               <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-800 dark:text-blue-200">
-                  Configure as credenciais de acesso ao sistema e defina o grupo de permissões do funcionário.
+                  Configure as credenciais de acesso ao sistema e selecione o grupo de permissões do funcionário.
                 </p>
               </div>
 
@@ -444,56 +419,21 @@ const AddStaffDialog = ({ open, onOpenChange, onAdd }: AddStaffDialogProps) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="role">Perfil de Acesso *</Label>
+                <Label htmlFor="grupoAcesso">Grupo de Permissões *</Label>
                 <Select
-                  value={formData.role}
-                  onValueChange={(value: "secretary" | "optometrist") => 
-                    setFormData({ ...formData, role: value })
-                  }
-                >
-                  <SelectTrigger id="role">
-                    <SelectValue placeholder="Selecione o perfil" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="secretary">
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium">Secretária</span>
-                        <span className="text-xs text-muted-foreground">
-                          Gerencia pacientes, agenda e fila de atendimento
-                        </span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="optometrist">
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium">Optometrista</span>
-                        <span className="text-xs text-muted-foreground">
-                          Acessa atendimentos, cria prescrições e prontuários
-                        </span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Perfil base do funcionário no sistema
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="grupoAcesso">Grupo de Permissões (Opcional)</Label>
-                <Select
-                  value={formData.grupoAcessoId || "none"}
+                  value={formData.grupoAcessoId || ""}
                   onValueChange={(value) =>
                     setFormData({
                       ...formData,
-                      grupoAcessoId: value === "none" ? "" : value,
+                      grupoAcessoId: value,
                     })
                   }
+                  required
                 >
                   <SelectTrigger id="grupoAcesso">
-                    <SelectValue placeholder="Selecione um grupo ou deixe vazio" />
+                    <SelectValue placeholder="Selecione um grupo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Nenhum (usar permissões padrão)</SelectItem>
                     {groups.map((group) => (
                       <SelectItem key={group.id} value={group.id}>
                         <div className="flex flex-col items-start">
@@ -509,7 +449,7 @@ const AddStaffDialog = ({ open, onOpenChange, onAdd }: AddStaffDialogProps) => {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Define permissões específicas além do perfil base
+                  Define as permissões de acesso do funcionário no sistema
                 </p>
               </div>
             </TabsContent>

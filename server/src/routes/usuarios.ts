@@ -29,18 +29,23 @@ router.post('/', async (req, res) => {
     } = req.body;
 
     // Validação básica
-    if (!nome_completo || !email || !senha || !perfil) {
+    if (!nome_completo || !email || !senha || !grupo_acesso_id) {
       return res.status(400).json({ 
-        error: 'Campos obrigatórios: nome_completo, email, senha, perfil' 
+        error: 'Campos obrigatórios: nome_completo, email, senha, grupo_acesso_id' 
       });
     }
 
-    // Validar perfil
-    const perfisValidos = ['ADMINISTRADOR', 'SECRETARIA', 'OPTOMETRISTA'];
-    if (!perfisValidos.includes(perfil)) {
-      return res.status(400).json({ 
-        error: 'Perfil inválido. Use: ADMINISTRADOR, SECRETARIA ou OPTOMETRISTA' 
-      });
+    // Mapear grupo_acesso_id para grupo_id (nome da coluna no banco)
+    const grupo_id = grupo_acesso_id;
+
+    // Validar perfil se fornecido
+    if (perfil) {
+      const perfisValidos = ['ADMINISTRADOR', 'SECRETARIA', 'OPTOMETRISTA'];
+      if (!perfisValidos.includes(perfil)) {
+        return res.status(400).json({ 
+          error: 'Perfil inválido. Use: ADMINISTRADOR, SECRETARIA ou OPTOMETRISTA' 
+        });
+      }
     }
 
     // Verificar se email já existe
@@ -63,7 +68,7 @@ router.post('/', async (req, res) => {
       email_confirm: true, // Auto confirmar email
       user_metadata: {
         nome_completo,
-        perfil
+        ...(perfil && { perfil })
       }
     });
 
@@ -76,31 +81,37 @@ router.post('/', async (req, res) => {
     }
 
     // Inserir dados na tabela usuarios
+    const insertData: any = {
+      id: authData.user.id,
+      nome_completo,
+      email,
+      senha_hash: '', // A senha é gerenciada pelo Supabase Auth
+      telefone: telefone || null,
+      cpf: cpf || null,
+      rg: rg || null,
+      data_nascimento: data_nascimento || null,
+      estado_civil: estado_civil || null,
+      endereco: endereco || null,
+      cep: cep || null,
+      cidade: cidade || null,
+      estado: estado || null,
+      data_admissao: data_admissao || null,
+      cargo: cargo || null,
+      salario: salario !== undefined && salario !== null ? Number(salario) : null,
+      crm: crm || null,
+      estado_crm: estado_crm || null,
+      ativo: true,
+      grupo_id: grupo_id,
+    };
+
+    // Adicionar perfil apenas se fornecido
+    if (perfil) {
+      insertData.perfil = perfil;
+    }
+
     const { data: usuarioData, error: dbError } = await supabase
       .from('usuarios')
-      .insert({
-        id: authData.user.id,
-        nome_completo,
-        email,
-        senha_hash: '', // A senha é gerenciada pelo Supabase Auth
-        perfil,
-        telefone: telefone || null,
-        cpf: cpf || null,
-        rg: rg || null,
-        data_nascimento: data_nascimento || null,
-        estado_civil: estado_civil || null,
-        endereco: endereco || null,
-        cep: cep || null,
-        cidade: cidade || null,
-        estado: estado || null,
-        data_admissao: data_admissao || null,
-        cargo: cargo || null,
-        salario: salario !== undefined && salario !== null ? Number(salario) : null,
-        crm: crm || null,
-        estado_crm: estado_crm || null,
-        ativo: true,
-        grupo_acesso_id: grupo_acesso_id || null,
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -219,7 +230,7 @@ router.put('/:id', async (req, res) => {
     if (crm !== undefined) updateData.crm = crm;
     if (estado_crm !== undefined) updateData.estado_crm = estado_crm;
     if (ativo !== undefined) updateData.ativo = ativo;
-    if (grupo_acesso_id !== undefined) updateData.grupo_acesso_id = grupo_acesso_id || null;
+    if (grupo_acesso_id !== undefined) updateData.grupo_id = grupo_acesso_id || null;
     if (cpf !== undefined) updateData.cpf = cpf;
     if (rg !== undefined) updateData.rg = rg;
     if (data_nascimento !== undefined) updateData.data_nascimento = data_nascimento;
