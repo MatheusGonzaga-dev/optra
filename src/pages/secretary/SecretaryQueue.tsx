@@ -271,6 +271,7 @@ const SecretaryQueue = () => {
               <Loader2 className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Atualizar
             </Button>
+            {/* Botão "Adicionar à Fila" removido - funcionalidade disponível em outros locais */}
           </div>
         </div>
 
