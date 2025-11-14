@@ -10,10 +10,12 @@
     {
       "source": "/api/(.*)",
       "destination": "/api"
-    },
+    }
+  ],
+  "routes": [
     {
-      "source": "/((?!api|_next|assets|.*\\.[a-z0-9]+$).*)",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
   "headers": [
