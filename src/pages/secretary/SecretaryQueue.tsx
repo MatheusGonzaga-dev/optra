@@ -9,9 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { ArrowUp, ArrowDown, Edit2, Search, User, UserPlus, Loader2, Clock, DollarSign, Stethoscope, AlertCircle, Pill, FileText, Activity, Phone } from "lucide-react";
+import { ArrowUp, ArrowDown, Edit2, Search, User, Loader2, Clock, DollarSign, Stethoscope, AlertCircle, Pill, FileText, Activity, Phone } from "lucide-react";
 import { toast } from "sonner";
-import AddToQueueDialog from "@/components/AddToQueueDialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
@@ -51,7 +50,6 @@ const SecretaryQueue = () => {
   const [loading, setLoading] = useState(true);
   const [editingPatient, setEditingPatient] = useState<QueueItem | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
   // Determinar o role baseado no perfil do usuário
   const getUserRole = () => {
@@ -189,11 +187,6 @@ const SecretaryQueue = () => {
     }
   };
 
-  const handleAddToQueue = async (data: any) => {
-    // Essa função será chamada pelo AddToQueueDialog
-    toast.success("Paciente adicionado à fila!");
-    await fetchQueue();
-  };
 
   const handleRemoveFromQueue = async (id: string) => {
     if (!confirm('Tem certeza que deseja remover este paciente da fila?')) return;
@@ -278,10 +271,6 @@ const SecretaryQueue = () => {
               <Loader2 className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Atualizar
             </Button>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <UserPlus className="w-4 h-4 mr-2" />
-            Adicionar à Fila
-          </Button>
           </div>
         </div>
 
@@ -457,7 +446,7 @@ const SecretaryQueue = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => moveDown(item.id)}
-                        disabled={index === filteredQueue.length - 1}
+                        disabled={index === filteredAguardando.length - 1}
                         title="Mover para baixo"
                       >
                         <ArrowDown className="h-4 w-4 mr-2" />
@@ -709,13 +698,6 @@ const SecretaryQueue = () => {
           )}
         </DialogContent>
       </Dialog>
-
-        {/* Dialog de Adicionar */}
-        <AddToQueueDialog
-          open={isAddDialogOpen}
-          onOpenChange={setIsAddDialogOpen}
-          onAdd={handleAddToQueue}
-        />
       </div>
     </DashboardLayout>
   );
