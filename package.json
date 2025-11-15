@@ -10,7 +10,7 @@
     "build:check": "npm run lint && vite build --mode production",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "serve -s dist -p $PORT"
+    "start": "node server-frontend.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

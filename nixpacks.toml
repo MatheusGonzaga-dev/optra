@@ -5,5 +5,5 @@ cmds = ["npm install --legacy-peer-deps"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "serve -s dist -p $PORT"
+cmd = "npm start"
 
