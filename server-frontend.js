@@ -11,7 +11,12 @@ console.log('📂 Current directory:', process.cwd());
 console.log('📂 __dirname:', __dirname);
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT;
+if (!PORT) {
+  console.error('❌ Error: PORT environment variable is not set!');
+  console.error('Railway should set this automatically. Please check your Railway configuration.');
+  process.exit(1);
+}
 
 // Tentar diferentes caminhos para dist
 const possibleDistPaths = [
