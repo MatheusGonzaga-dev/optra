@@ -70,3 +70,4 @@ Agora você tem frontend + backend no mesmo projeto Railway!
 - Verifique se `VITE_API_URL` está com a URL correta do backend
 - Verifique se o backend está rodando (veja logs)
 
+

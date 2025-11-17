@@ -22,14 +22,21 @@ import { router as examesRouter } from './routes/exames.js';
 const app = express();
 
 app.use(helmet());
-// CORS configurado para aceitar requisições da Vercel e localhost
+// CORS configurado para aceitar requisições
+const corsOrigins = process.env.CORS_ORIGIN 
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : [
+      'https://optrasystem.vercel.app',
+      /^https:\/\/.*\.vercel\.app$/, // Aceita todos os previews da Vercel
+      /^https:\/\/.*\.up\.railway\.app$/, // Aceita todos os domínios do Railway
+      'http://localhost:8080',
+      'http://localhost:5173', // Vite dev server alternativo
+    ];
+
+// Em produção, se CORS_ORIGIN não estiver definido, aceita origens conhecidas
+// Configure CORS_ORIGIN para adicionar domínios específicos
 app.use(cors({ 
-  origin: [
-    'https://optrasystem.vercel.app',
-    /^https:\/\/.*\.vercel\.app$/, // Aceita todos os previews da Vercel
-    'http://localhost:8080',
-    'http://localhost:5173', // Vite dev server alternativo
-  ],
+  origin: corsOrigins,
   credentials: false 
 }));
 app.use(express.json());
