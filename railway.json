@@ -1,8 +1,12 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
+<<<<<<< HEAD
     "builder": "NIXPACKS",
     "buildCommand": "npm ci --legacy-peer-deps && npm run build"
+=======
+    "builder": "NIXPACKS"
+>>>>>>> ace48fe145e1533373f5cd1f98e2e0667cc81af5
   },
   "deploy": {
     "startCommand": "npx serve -s dist -l $PORT",

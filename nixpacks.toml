@@ -1,8 +1,13 @@
+<<<<<<< HEAD
 [phases.setup]
 nixPkgs = ["nodejs-20_x"]
 
 [phases.install]
 cmds = ["npm ci --legacy-peer-deps"]
+=======
+[phases.install]
+cmds = ["npm install --legacy-peer-deps"]
+>>>>>>> ace48fe145e1533373f5cd1f98e2e0667cc81af5
 
 [phases.build]
 cmds = ["npm run build"]
@@ -10,4 +15,7 @@ cmds = ["npm run build"]
 [start]
 cmd = "npx serve -s dist -l $PORT"
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> ace48fe145e1533373f5cd1f98e2e0667cc81af5
