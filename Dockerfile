@@ -1,40 +1,49 @@
-# Dockerfile para Frontend - Optra Vision
-FROM node:20-alpine AS builder
+# Dockerfile Unificado - Backend + Frontend
+FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app
 
-# Copiar arquivos de dependências
+# Build do frontend
 COPY package*.json ./
-
-# Instalar dependências
 RUN npm ci --legacy-peer-deps
 
-# Copiar código fonte
 COPY . .
-
-# Build do frontend
 RUN npm run build
 
-# Stage de produção - usar Node.js com serve
+# Stage do backend
+FROM node:20-alpine AS backend-builder
+
+WORKDIR /app
+
+# Build do backend
+COPY server/package*.json ./server/
+COPY server/tsconfig.json ./server/
+RUN cd server && npm ci
+
+COPY server/src ./server/src
+RUN cd server && npm run build
+
+# Stage de produção
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copiar package.json e instalar serve globalmente
-COPY package*.json ./
-RUN npm ci --legacy-peer-deps --only=production
+# Copiar package.json do backend e instalar apenas dependências de produção
+COPY server/package*.json ./
+RUN npm ci --only=production
 
-# Copiar arquivos buildados
-COPY --from=builder /app/dist ./dist
+# Copiar backend buildado (o código espera em dist/)
+COPY --from=backend-builder /app/server/dist ./dist
 
-# Copiar script de inicialização
-COPY server.js ./
+# Copiar frontend buildado para a raiz (o servidor procura em process.cwd()/dist)
+COPY --from=frontend-builder /app/dist ./frontend-dist
 
-# Expor porta (Railway usa variável PORT)
+# Expor porta
 EXPOSE 8080
 
-# Variável de ambiente padrão
+# Variável de ambiente
 ENV NODE_ENV=production
+ENV PORT=8080
 
-# Comando para iniciar usando script Node.js que garante 0.0.0.0
-CMD ["node", "server.js"]
+# Comando para iniciar o servidor unificado
+CMD ["node", "dist/index.js"]
