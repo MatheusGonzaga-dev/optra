@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalar dependências
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copiar código fonte
 COPY . .
@@ -15,18 +15,23 @@ COPY . .
 # Build do frontend
 RUN npm run build
 
-# Stage de produção - usar Nginx para servir arquivos estáticos
-FROM nginx:alpine
+# Stage de produção - usar Node.js com serve
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copiar package.json e instalar serve globalmente
+COPY package*.json ./
+RUN npm ci --legacy-peer-deps --only=production
 
 # Copiar arquivos buildados
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /app/dist ./dist
 
-# Copiar configuração customizada do Nginx (opcional)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Expor porta (Railway usa variável PORT)
+EXPOSE 8080
 
-# Expor porta
-EXPOSE 80
+# Variável de ambiente padrão
+ENV NODE_ENV=production
 
-# Nginx já inicia automaticamente
-CMD ["nginx", "-g", "daemon off;"]
-
+# Comando para iniciar usando serve com PORT do Railway
+CMD sh -c "node node_modules/.bin/serve -s dist -l \${PORT:-8080}"
