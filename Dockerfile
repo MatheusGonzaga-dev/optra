@@ -27,12 +27,14 @@ RUN npm ci --legacy-peer-deps --only=production
 # Copiar arquivos buildados
 COPY --from=builder /app/dist ./dist
 
+# Copiar script de inicialização
+COPY server.js ./
+
 # Expor porta (Railway usa variável PORT)
 EXPOSE 8080
 
 # Variável de ambiente padrão
 ENV NODE_ENV=production
 
-# Comando para iniciar usando serve com PORT do Railway
-# O serve por padrão escuta em 0.0.0.0 quando especificamos apenas a porta
-CMD sh -c "PORT=\${PORT:-8080} && node node_modules/.bin/serve -s dist -l \$PORT"
+# Comando para iniciar usando script Node.js que garante 0.0.0.0
+CMD ["node", "server.js"]
