@@ -34,4 +34,5 @@ EXPOSE 8080
 ENV NODE_ENV=production
 
 # Comando para iniciar usando serve com PORT do Railway
-CMD sh -c "node node_modules/.bin/serve -s dist -l \${PORT:-8080}"
+# O serve por padrão escuta em 0.0.0.0 quando especificamos apenas a porta
+CMD sh -c "PORT=\${PORT:-8080} && node node_modules/.bin/serve -s dist -l \$PORT"
