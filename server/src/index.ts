@@ -109,12 +109,12 @@ if (existsSync(distPath)) {
   });
 }
 
-// Railway define PORT automaticamente, usar sem fallback para garantir que use a porta correta
-const PORT = Number(process.env.PORT);
-if (!PORT) {
-  console.error('❌ Erro: Variável PORT não definida! Railway deve definir automaticamente.');
-  process.exit(1);
-}
+// Railway define PORT automaticamente via variável de ambiente
+// Se não estiver definida, usar 4000 como fallback (para desenvolvimento local)
+const PORT = Number(process.env.PORT) || 4000;
+
+// Log da porta sendo usada para debug
+console.log(`🔌 Usando porta: ${PORT} (PORT=${process.env.PORT || 'não definida, usando fallback 4000'})`);
 
 // Só inicia o servidor se não estiver rodando como serverless function
 if (process.env.VERCEL !== '1') {
