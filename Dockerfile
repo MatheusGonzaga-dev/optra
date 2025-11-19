@@ -38,12 +38,13 @@ COPY --from=backend-builder /app/server/dist ./dist
 # Copiar frontend buildado para a raiz (o servidor procura em process.cwd()/dist)
 COPY --from=frontend-builder /app/dist ./frontend-dist
 
-# Expor porta
+# Expor porta (Railway define automaticamente via $PORT em runtime)
+# Não definir PORT aqui, Railway injeta automaticamente
 EXPOSE 8080
 
 # Variável de ambiente
 ENV NODE_ENV=production
-ENV PORT=8080
+# PORT será definido automaticamente pelo Railway em runtime
 
 # Comando para iniciar o servidor unificado
 CMD ["node", "dist/index.js"]
