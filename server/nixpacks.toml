@@ -1,21 +1,12 @@
-<<<<<<< HEAD
 [phases.setup]
 nixPkgs = ["nodejs-20_x"]
 
 [phases.install]
 cmds = ["npm ci"]
-=======
-[phases.install]
-cmds = ["npm install"]
->>>>>>> ace48fe145e1533373f5cd1f98e2e0667cc81af5
 
 [phases.build]
 cmds = ["npm run build"]
 
 [start]
-<<<<<<< HEAD
 cmd = "node dist/index.js"
-=======
-cmd = "npm start"
->>>>>>> ace48fe145e1533373f5cd1f98e2e0667cc81af5
 
