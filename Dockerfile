@@ -38,9 +38,9 @@ COPY --from=backend-builder /app/server/dist ./dist
 # Copiar frontend buildado para a raiz (o servidor procura em process.cwd()/dist)
 COPY --from=frontend-builder /app/dist ./frontend-dist
 
-# Expor porta (Railway define automaticamente via $PORT em runtime)
-# Não definir PORT aqui, Railway injeta automaticamente
-EXPOSE 8080
+# Expor porta dinâmica (Railway define PORT automaticamente)
+# EXPOSE é apenas documentação, Railway usa a porta definida em $PORT
+EXPOSE 4000
 
 # Variável de ambiente
 ENV NODE_ENV=production
