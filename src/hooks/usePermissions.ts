@@ -1,10 +1,15 @@
 import { useAuth } from '@/contexts/AuthContext';
 
 export function usePermissions() {
-  const { permissions, usuario } = useAuth();
+  const { permissions, isAdmin, usuario } = useAuth();
 
   const hasPermission = (permission: string): boolean => {
-    // Admin tem todas as permissões
+    // Se o grupo do usuário tem flag is_admin, tem acesso total
+    if (isAdmin) {
+      return true;
+    }
+    
+    // Compatibilidade com perfil (modo legado)
     if (usuario?.perfil === 'ADMINISTRADOR') {
       return true;
     }
@@ -13,7 +18,12 @@ export function usePermissions() {
   };
 
   const hasAnyPermission = (permissionList: string[]): boolean => {
-    // Admin tem todas as permissões
+    // Se o grupo do usuário tem flag is_admin, tem acesso total
+    if (isAdmin) {
+      return true;
+    }
+    
+    // Compatibilidade com perfil (modo legado)
     if (usuario?.perfil === 'ADMINISTRADOR') {
       return true;
     }
@@ -22,7 +32,12 @@ export function usePermissions() {
   };
 
   const hasAllPermissions = (permissionList: string[]): boolean => {
-    // Admin tem todas as permissões
+    // Se o grupo do usuário tem flag is_admin, tem acesso total
+    if (isAdmin) {
+      return true;
+    }
+    
+    // Compatibilidade com perfil (modo legado)
     if (usuario?.perfil === 'ADMINISTRADOR') {
       return true;
     }
@@ -32,6 +47,7 @@ export function usePermissions() {
 
   return {
     permissions,
+    isAdmin,
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,

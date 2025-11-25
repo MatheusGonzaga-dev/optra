@@ -8,6 +8,7 @@ export const router = Router();
 const grupoSchema = z.object({
   nome: z.string().min(1),
   descricao: z.string().optional().nullable(),
+  is_admin: z.boolean().optional(),
   permissoes: z.array(z.string().uuid()).optional(), // Array de IDs de permissões
 });
 
@@ -131,12 +132,16 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: parse.error.format() });
     }
 
-    const { nome, descricao, permissoes } = parse.data;
+    const { nome, descricao, is_admin, permissoes } = parse.data;
 
     // Criar grupo
     const { data: grupo, error: grupoError } = await supabase
       .from('grupos_acesso')
-      .insert({ nome, descricao })
+      .insert({ 
+        nome, 
+        descricao,
+        is_admin: is_admin ?? false
+      })
       .select('*')
       .single();
 
@@ -173,13 +178,14 @@ router.put('/:id', async (req, res) => {
       return res.status(400).json({ error: parse.error.format() });
     }
 
-    const { nome, descricao, permissoes } = parse.data;
+    const { nome, descricao, is_admin, permissoes } = parse.data;
 
     // Atualizar dados do grupo
-    if (nome || descricao !== undefined) {
+    if (nome || descricao !== undefined || is_admin !== undefined) {
       const updateData: any = {};
       if (nome) updateData.nome = nome;
       if (descricao !== undefined) updateData.descricao = descricao;
+      if (is_admin !== undefined) updateData.is_admin = is_admin;
 
       const { error: updateError } = await supabase
         .from('grupos_acesso')

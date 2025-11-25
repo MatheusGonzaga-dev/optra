@@ -36,6 +36,7 @@ interface Group {
   nome: string;
   descricao: string | null;
   ativo: boolean;
+  is_admin?: boolean;
   criado_em: string;
 }
 
@@ -66,6 +67,7 @@ export default function Groups() {
     nome: "",
     descricao: "",
     ativo: true,
+    is_admin: false,
   });
 
   const permissionIdByCode = useMemo(() => {
@@ -142,7 +144,7 @@ export default function Groups() {
 
       toast.success("Grupo criado com sucesso");
       setIsAddDialogOpen(false);
-      setFormData({ nome: "", descricao: "", ativo: true });
+      setFormData({ nome: "", descricao: "", ativo: true, is_admin: false });
       fetchGroups();
     } catch (error) {
       console.error("Erro:", error);
@@ -174,7 +176,7 @@ export default function Groups() {
       toast.success("Grupo atualizado com sucesso");
       setIsEditDialogOpen(false);
       setSelectedGroup(null);
-      setFormData({ nome: "", descricao: "", ativo: true });
+      setFormData({ nome: "", descricao: "", ativo: true, is_admin: false });
       fetchGroups();
     } catch (error) {
       console.error("Erro:", error);
@@ -208,6 +210,7 @@ export default function Groups() {
       nome: group.nome,
       descricao: group.descricao || "",
       ativo: group.ativo,
+      is_admin: group.is_admin || false,
     });
     setIsEditDialogOpen(true);
   };
@@ -243,6 +246,7 @@ export default function Groups() {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            is_admin: selectedGroup.is_admin || false,
             permissoes: groupPermissions,
           }),
         }
@@ -275,6 +279,47 @@ export default function Groups() {
     const permissionId = permissionIdByCode.get(permissionCode);
     if (!permissionId) return false;
     return groupPermissions.includes(permissionId);
+  };
+
+  // Função para coletar todos os códigos de permissão do permissionMatrix
+  const getAllPermissionCodes = useMemo(() => {
+    const codes: string[] = [];
+    Object.values(permissionMatrix).forEach((menus) => {
+      Object.values(menus).forEach((menu) => {
+        // Adicionar permissões das ações principais
+        Object.values(menu.actions).forEach((action) => {
+          if (action?.permission) {
+            codes.push(action.permission);
+          }
+        });
+        // Adicionar permissões extras
+        menu.extraActions?.forEach((extra) => {
+          if (extra.permission) {
+            codes.push(extra.permission);
+          }
+        });
+      });
+    });
+    return codes;
+  }, []);
+
+  // Função para marcar/desmarcar todas as permissões quando admin é alterado
+  const handleAdminToggle = (checked: boolean) => {
+    if (!selectedGroup) return;
+
+    setSelectedGroup({ ...selectedGroup, is_admin: checked });
+
+    if (checked) {
+      // Se marcou como admin, marcar todas as permissões
+      const allPermissionIds = getAllPermissionCodes
+        .map((code) => permissionIdByCode.get(code))
+        .filter((id): id is string => id !== undefined);
+      
+      // Combinar com as permissões já existentes (usar Set para evitar duplicatas)
+      const allIds = new Set([...groupPermissions, ...allPermissionIds]);
+      setGroupPermissions(Array.from(allIds));
+    }
+    // Se desmarcou, manter as permissões como estão (não desmarcar automaticamente)
   };
 
   return (
@@ -325,6 +370,16 @@ export default function Groups() {
                     }
                   />
                   <Label htmlFor="ativo">Ativo</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="is_admin"
+                    checked={formData.is_admin}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, is_admin: checked as boolean })
+                    }
+                  />
+                  <Label htmlFor="is_admin">Administrador (Acesso total a todas as telas)</Label>
                 </div>
                 <Button onClick={handleAddGroup} disabled={loading} className="w-full">
                   {loading ? "Salvando..." : "Salvar"}
@@ -438,6 +493,16 @@ export default function Groups() {
                 />
                 <Label htmlFor="edit-ativo">Ativo</Label>
               </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="edit-is_admin"
+                  checked={formData.is_admin}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, is_admin: checked as boolean })
+                  }
+                />
+                <Label htmlFor="edit-is_admin">Administrador (Acesso total a todas as telas)</Label>
+              </div>
               <Button
                 onClick={handleUpdateGroup}
                 disabled={loading}
@@ -461,6 +526,16 @@ export default function Groups() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              <div className="flex items-center space-x-2 p-4 bg-muted/50 rounded-lg border">
+                <Checkbox
+                  id="perm-is_admin"
+                  checked={selectedGroup?.is_admin || false}
+                  onCheckedChange={(checked) => handleAdminToggle(checked as boolean)}
+                />
+                <Label htmlFor="perm-is_admin" className="text-base font-semibold cursor-pointer">
+                  Administrador - Acesso total a todas as telas (ignora todas as permissões abaixo)
+                </Label>
+              </div>
               <Accordion type="multiple" defaultValue={Object.keys(permissionMatrix)}>
                 {Object.entries(permissionMatrix).map(([moduleName, menus]) => {
                   const moduleColumns = actionColumns.filter((column) =>

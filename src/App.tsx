@@ -3,9 +3,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import ConsultorioSelectDialog from "@/components/ConsultorioSelectDialog";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
@@ -24,6 +25,7 @@ import AdminExpenses from "./pages/admin/AdminExpenses";
 import AdminReceivables from "./pages/admin/AdminReceivables";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminGroups from "./pages/admin/Groups";
+import AdminConsultorios from "./pages/admin/AdminConsultorios";
 import SecretaryDashboard from "./pages/secretary/SecretaryDashboard";
 import NewPatient from "./pages/secretary/NewPatient";
 import PatientList from "./pages/secretary/PatientList";
@@ -37,6 +39,7 @@ import OptometristSchedule from "./pages/optometrist/OptometristSchedule";
 import AppointmentHistory from "./pages/optometrist/AppointmentHistory";
 import AppointmentDetails from "./pages/optometrist/AppointmentDetails";
 import MetricDetails from "./pages/optometrist/MetricDetails";
+import TVQueue from "./pages/TVQueue";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +51,73 @@ const checkEnvironment = () => {
   }
   // Em produção, verifica se está configurado
   return isSupabaseConfigured();
+};
+
+const AppContent = () => {
+  const { usuario, precisaSelecionarConsultorio, selecionarConsultorio } = useAuth();
+
+  return (
+    <>
+      <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/unauthorized" element={<Unauthorized />} />
+              <Route path="/tv" element={<TVQueue />} />
+            
+            {/* Admin Routes */}
+            <Route path="/admin/dashboard" element={<ProtectedRoute permission="dashboard.view"><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/patients" element={<ProtectedRoute permission="pacientes.view"><PatientList /></ProtectedRoute>} />
+            <Route path="/admin/patient/:id" element={<ProtectedRoute permission="pacientes.view"><PatientDetails /></ProtectedRoute>} />
+            <Route path="/admin/queue" element={<ProtectedRoute permission="fila.view"><SecretaryQueue /></ProtectedRoute>} />
+            <Route path="/admin/attendance/:id" element={<ProtectedRoute permission="atendimentos.view"><PatientAttendance /></ProtectedRoute>} />
+            <Route path="/admin/financial" element={<ProtectedRoute permission="contas_pagar.view"><AdminFinancial /></ProtectedRoute>} />
+            <Route path="/admin/appointments" element={<ProtectedRoute permission="atendimentos.view"><AdminAppointmentHistory /></ProtectedRoute>} />
+            <Route path="/admin/appointment/:id" element={<ProtectedRoute permission="atendimentos.view"><AdminAppointmentDetails /></ProtectedRoute>} />
+            <Route path="/admin/reports" element={<ProtectedRoute permission="relatorios.view"><AdminReports /></ProtectedRoute>} />
+            <Route path="/admin/services" element={<ProtectedRoute permission="servicos.view"><AdminServices /></ProtectedRoute>} />
+            <Route path="/admin/partnerships" element={<ProtectedRoute permission="parcerias.view"><AdminPartnerships /></ProtectedRoute>} />
+            <Route path="/admin/expenses" element={<ProtectedRoute permission="contas_pagar.view"><AdminExpenses /></ProtectedRoute>} />
+            <Route path="/admin/receivables" element={<ProtectedRoute permission="contas_receber.view"><AdminReceivables /></ProtectedRoute>} />
+            <Route path="/admin/categories" element={<ProtectedRoute permission="categorias.view"><AdminCategories /></ProtectedRoute>} />
+            <Route path="/admin/groups" element={<ProtectedRoute permission="grupos.view"><AdminGroups /></ProtectedRoute>} />
+            <Route path="/admin/access" element={<ProtectedRoute permission="usuarios.view"><AdminAccess /></ProtectedRoute>} />
+            <Route path="/admin/consultorios" element={<ProtectedRoute permission="consultorio.view"><AdminConsultorios /></ProtectedRoute>} />
+            <Route path="/optometrist/consultorios" element={<ProtectedRoute permission="consultorio.view"><AdminConsultorios /></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute permission="configuracoes.view"><AdminSettings /></ProtectedRoute>} />
+            
+            {/* Secretary Routes */}
+            <Route path="/secretary/dashboard" element={<ProtectedRoute permission="dashboard.view"><SecretaryDashboard /></ProtectedRoute>} />
+            <Route path="/secretary/patients" element={<ProtectedRoute permission="pacientes.view"><PatientList /></ProtectedRoute>} />
+            <Route path="/secretary/patient/:id" element={<ProtectedRoute permission="pacientes.view"><PatientDetails /></ProtectedRoute>} />
+            <Route path="/secretary/schedule" element={<ProtectedRoute permission="agenda.view"><SecretarySchedule /></ProtectedRoute>} />
+            <Route path="/secretary/queue" element={<ProtectedRoute permission="fila.view"><SecretaryQueue /></ProtectedRoute>} />
+            
+            {/* Optometrist Routes */}
+            <Route path="/optometrist" element={<ProtectedRoute permission="dashboard.view"><OptometristDashboard /></ProtectedRoute>} />
+            <Route path="/optometrist/dashboard" element={<ProtectedRoute permission="dashboard.view"><OptometristDashboard /></ProtectedRoute>} />
+            <Route path="/optometrist/queue" element={<ProtectedRoute permission="fila.view"><PatientQueue /></ProtectedRoute>} />
+            <Route path="/optometrist/schedule" element={<ProtectedRoute permission="agenda.view"><OptometristSchedule /></ProtectedRoute>} />
+            <Route path="/optometrist/appointments" element={<ProtectedRoute permission="atendimentos.view"><AppointmentHistory /></ProtectedRoute>} />
+            <Route path="/optometrist/appointment/:id" element={<ProtectedRoute permission="atendimentos.view"><AppointmentDetails /></ProtectedRoute>} />
+            <Route path="/optometrist/attendance/:id" element={<ProtectedRoute permission="atendimentos.view"><PatientAttendance /></ProtectedRoute>} />
+            <Route path="/optometrist/metrics/:metricType" element={<ProtectedRoute permission="dashboard.view"><MetricDetails /></ProtectedRoute>} />
+            <Route path="/optometrist/patients" element={<ProtectedRoute permission="pacientes.view"><PatientList /></ProtectedRoute>} />
+            <Route path="/optometrist/patient/:id" element={<ProtectedRoute permission="pacientes.view"><PatientDetails /></ProtectedRoute>} />
+            
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+      </Routes>
+      
+      {usuario && (
+        <ConsultorioSelectDialog
+          open={precisaSelecionarConsultorio}
+          usuarioId={usuario.id}
+          onSelect={selecionarConsultorio}
+          obrigatorio={precisaSelecionarConsultorio}
+        />
+      )}
+    </>
+  );
 };
 
 const App = () => {
@@ -63,54 +133,11 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/unauthorized" element={<Unauthorized />} />
-            
-            {/* Admin Routes */}
-            <Route path="/admin/dashboard" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/patients" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><PatientList /></ProtectedRoute>} />
-            <Route path="/admin/patient/:id" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><PatientDetails /></ProtectedRoute>} />
-            <Route path="/admin/queue" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><SecretaryQueue /></ProtectedRoute>} />
-            <Route path="/admin/attendance/:id" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><PatientAttendance /></ProtectedRoute>} />
-            <Route path="/admin/financial" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminFinancial /></ProtectedRoute>} />
-            <Route path="/admin/appointments" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminAppointmentHistory /></ProtectedRoute>} />
-            <Route path="/admin/appointment/:id" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminAppointmentDetails /></ProtectedRoute>} />
-            <Route path="/admin/reports" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminReports /></ProtectedRoute>} />
-            <Route path="/admin/services" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminServices /></ProtectedRoute>} />
-            <Route path="/admin/partnerships" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminPartnerships /></ProtectedRoute>} />
-            <Route path="/admin/expenses" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminExpenses /></ProtectedRoute>} />
-            <Route path="/admin/receivables" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminReceivables /></ProtectedRoute>} />
-            <Route path="/admin/categories" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminCategories /></ProtectedRoute>} />
-            <Route path="/admin/groups" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminGroups /></ProtectedRoute>} />
-            <Route path="/admin/access" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminAccess /></ProtectedRoute>} />
-            <Route path="/admin/settings" element={<ProtectedRoute allowedProfiles={['ADMINISTRADOR']}><AdminSettings /></ProtectedRoute>} />
-            
-            {/* Secretary Routes */}
-            <Route path="/secretary/dashboard" element={<ProtectedRoute allowedProfiles={['SECRETARIA']}><SecretaryDashboard /></ProtectedRoute>} />
-            <Route path="/secretary/patients" element={<ProtectedRoute allowedProfiles={['SECRETARIA']}><PatientList /></ProtectedRoute>} />
-            <Route path="/secretary/patient/:id" element={<ProtectedRoute allowedProfiles={['SECRETARIA']}><PatientDetails /></ProtectedRoute>} />
-            <Route path="/secretary/schedule" element={<ProtectedRoute allowedProfiles={['SECRETARIA']}><SecretarySchedule /></ProtectedRoute>} />
-            <Route path="/secretary/queue" element={<ProtectedRoute allowedProfiles={['SECRETARIA']}><SecretaryQueue /></ProtectedRoute>} />
-            
-            {/* Optometrist Routes */}
-            <Route path="/optometrist" element={<ProtectedRoute allowedProfiles={['OPTOMETRISTA']}><OptometristDashboard /></ProtectedRoute>} />
-            <Route path="/optometrist/dashboard" element={<ProtectedRoute allowedProfiles={['OPTOMETRISTA']}><OptometristDashboard /></ProtectedRoute>} />
-            <Route path="/optometrist/queue" element={<ProtectedRoute allowedProfiles={['OPTOMETRISTA']}><PatientQueue /></ProtectedRoute>} />
-            <Route path="/optometrist/schedule" element={<ProtectedRoute allowedProfiles={['OPTOMETRISTA']}><OptometristSchedule /></ProtectedRoute>} />
-            <Route path="/optometrist/appointments" element={<ProtectedRoute allowedProfiles={['OPTOMETRISTA']}><AppointmentHistory /></ProtectedRoute>} />
-            <Route path="/optometrist/appointment/:id" element={<ProtectedRoute allowedProfiles={['OPTOMETRISTA']}><AppointmentDetails /></ProtectedRoute>} />
-            <Route path="/optometrist/attendance/:id" element={<ProtectedRoute allowedProfiles={['OPTOMETRISTA']}><PatientAttendance /></ProtectedRoute>} />
-            <Route path="/optometrist/metrics/:metricType" element={<ProtectedRoute allowedProfiles={['OPTOMETRISTA']}><MetricDetails /></ProtectedRoute>} />
-            
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+            <AppContent />
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 };
 
